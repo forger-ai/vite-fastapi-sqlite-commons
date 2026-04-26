@@ -1,0 +1,14 @@
+services:
+  backend:
+    build:
+      # dockerfile path is relative to the build context (./backend in each app)
+      dockerfile: ../commons/backend/Dockerfile
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  frontend:
+    build:
+      # dockerfile path is relative to the build context (./frontend in each app)
+      dockerfile: ../commons/frontend/Dockerfile
+    command: npm run dev -- --host 0.0.0.0
+    restart: unless-stopped
