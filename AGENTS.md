@@ -1,171 +1,171 @@
 # AGENTS
 
-## Fuente de Verdad
+## Source of Truth
 
-Este repo contiene los archivos compartidos del stack `vite-fastapi-sqlite`.
+This repo contains the shared files for the `vite-fastapi-sqlite` stack.
 
-`vite-fastapi-sqlite` es el stack de apps Forger disponible actualmente. Las apps de este stack combinan backend Python/FastAPI, base SQLite local, frontend Vite + React y UI con MUI / Material Design.
+`vite-fastapi-sqlite` is the currently available Forger app stack. Apps in this stack combine a Python/FastAPI backend, local SQLite database, Vite + React frontend, and UI with MUI / Material Design.
 
-Este repo no contiene una app final. Contiene infraestructura común que las apps del stack consumen como submódulo `commons/` o como copia publicada dentro de estructuras de catálogo.
+This repo does not contain a final app. It contains common infrastructure that stack apps consume as the `commons/` submodule or as a published copy inside catalog structures.
 
-## Rol de Commons
+## Role of Commons
 
-Commons existe para evitar duplicar piezas técnicas comunes entre apps del mismo stack.
+Commons exists to avoid duplicating common technical pieces across apps in the same stack.
 
-Los archivos de este repo deben ser genéricos, reutilizables y sin lógica de negocio específica.
+Files in this repo must be generic, reusable, and free of app-specific business logic.
 
-Pertenece a commons:
+Belongs in commons:
 
-- Dockerfile base de backend para apps Python/FastAPI con `uv`.
-- Dockerfile base de frontend para apps Vite/React.
-- helper de base de datos SQLModel/SQLite.
-- endpoint compartido de health check.
-- helper compartido de CORS.
-- cliente HTTP frontend compartido.
-- definiciones base de Docker Compose que las apps extienden.
+- base backend Dockerfile for Python/FastAPI apps with `uv`;
+- base frontend Dockerfile for Vite/React apps;
+- SQLModel/SQLite database helper;
+- shared health check endpoint;
+- shared CORS helper;
+- shared frontend HTTP client;
+- base Docker Compose definitions extended by apps.
 
-No pertenece a commons:
+Does not belong in commons:
 
-- modelos de negocio de una app;
-- rutas de negocio;
-- servicios de dominio;
-- pantallas específicas;
-- textos de producto;
-- categorías, semillas o datos de una app;
-- skills específicas de una app;
-- scripts operativos propios de una app;
-- decisiones visuales que dependan de un producto concreto.
+- business models for a specific app;
+- business routes;
+- domain services;
+- specific screens;
+- product copy;
+- categories, seeds, or app data;
+- app-specific skills;
+- app-specific operational scripts;
+- visual decisions that depend on a concrete product.
 
-## Contenido Actual
+## Current Contents
 
 ```text
 backend/
-  Dockerfile        Imagen base del backend con Python y uv
-  database.py       Engine SQLModel, init_db y sesiones
-  health.py         Router GET /health con validación de base
-  cors.py           Lectura de CORS_ORIGINS desde entorno
+  Dockerfile        Backend base image with Python and uv
+  database.py       SQLModel engine, init_db, and sessions
+  health.py         GET /health router with database validation
+  cors.py           CORS_ORIGINS reader from environment
 
 frontend/
-  Dockerfile        Imagen base del frontend con Node/Vite
-  client.ts         Cliente HTTP tipado y manejo de errores
+  Dockerfile        Frontend base image with Node/Vite
+  client.ts         Typed HTTP client and error handling
 
 docker-compose.base.yml
-  Servicios base backend/frontend usados por apps del stack
+  Base backend/frontend services used by apps in the stack
 ```
 
-## Contrato Backend
+## Backend Contract
 
-`backend/database.py` define:
+`backend/database.py` defines:
 
-- resolución de `DATABASE_URL` desde entorno;
-- fallback a una base SQLite local;
-- `engine` SQLModel compartido;
-- activación de foreign keys en SQLite;
-- `init_db()` para crear tablas registradas;
-- `get_session()` como dependencia de sesión para FastAPI.
+- `DATABASE_URL` resolution from environment;
+- fallback to a local SQLite database;
+- shared SQLModel `engine`;
+- SQLite foreign key activation;
+- `init_db()` to create registered tables;
+- `get_session()` as a FastAPI session dependency.
 
-Las apps deben importar sus modelos antes de llamar `init_db()`. La convención del stack usa un archivo local de app para registrar modelos antes de inicializar la base.
+Apps must import their models before calling `init_db()`. The stack convention uses a local app file to register models before initializing the database.
 
-`backend/health.py` define:
+`backend/health.py` defines:
 
-- router FastAPI compartido;
-- endpoint `GET /health`;
-- consulta `SELECT 1` contra la base;
-- respuesta simple con `status: "ok"` y `database: "sqlite"`.
+- shared FastAPI router;
+- `GET /health` endpoint;
+- `SELECT 1` query against the database;
+- simple response with `status: "ok"` and `database: "sqlite"`.
 
-`backend/cors.py` define:
+`backend/cors.py` defines:
 
-- helper `allowed_origins()`;
-- lectura de `CORS_ORIGINS` desde entorno;
-- fallback a orígenes locales de Vite.
+- `allowed_origins()` helper;
+- `CORS_ORIGINS` reader from environment;
+- fallback to local Vite origins.
 
-## Contrato Frontend
+## Frontend Contract
 
-`frontend/client.ts` define:
+`frontend/client.ts` defines:
 
-- `API_BASE_URL` desde `VITE_API_BASE_URL`;
-- fallback local a `http://localhost:8000`;
-- clase `ApiError`;
-- helper genérico `request<T>()`;
-- helpers HTTP `get`, `post`, `patch`, `put` y `del`;
-- manejo JSON por defecto;
-- soporte para `FormData`;
-- manejo de errores de red y errores HTTP.
+- `API_BASE_URL` from `VITE_API_BASE_URL`;
+- local fallback to `http://localhost:8000`;
+- `ApiError` class;
+- generic `request<T>()` helper;
+- HTTP helpers `get`, `post`, `patch`, `put`, and `del`;
+- default JSON handling;
+- `FormData` support;
+- network and HTTP error handling.
 
-Las apps del stack deben usar este cliente compartido para llamadas HTTP base. Si una app necesita funciones de dominio, debe crear wrappers locales en su propio `frontend/src/api/`.
+Apps in the stack must use this shared client for base HTTP calls. If an app needs domain functions, it must create local wrappers in its own `frontend/src/api/`.
 
-## Contrato Docker Compose
+## Docker Compose Contract
 
-`docker-compose.base.yml` define servicios base:
+`docker-compose.base.yml` defines base services:
 
-- `backend`: construye con `commons/backend/Dockerfile` y ejecuta FastAPI con uvicorn.
-- `frontend`: construye con `commons/frontend/Dockerfile` y ejecuta Vite.
+- `backend`: builds with `commons/backend/Dockerfile` and runs FastAPI with uvicorn.
+- `frontend`: builds with `commons/frontend/Dockerfile` and runs Vite.
 
-Cada app define su propio `docker-compose.yml` y extiende o usa estos servicios según su estructura local.
+Each app defines its own `docker-compose.yml` and extends or uses these services according to its local structure.
 
-## Cuándo Editar Commons
+## When to Edit Commons
 
-Editar commons cuando el cambio cumple todas estas condiciones:
+Edit commons when the change meets all these conditions:
 
-- aplica a más de una app del stack;
-- no introduce reglas de negocio;
-- mantiene compatibilidad con apps existentes del stack;
-- reduce duplicación real;
-- mantiene el contrato simple para apps locales;
-- puede explicarse como infraestructura del stack, no como feature de una app.
+- applies to more than one app in the stack;
+- introduces no business rules;
+- remains compatible with existing apps in the stack;
+- reduces real duplication;
+- keeps the contract simple for local apps;
+- can be explained as stack/platform infrastructure, not as an app feature.
 
-Ejemplos de cambios apropiados:
+Appropriate examples:
 
-- mejorar manejo genérico de errores HTTP;
-- ajustar configuración base de CORS;
-- corregir inicialización SQLite;
-- mejorar health check común;
-- actualizar Dockerfiles base;
-- agregar helpers compartidos mínimos que todas las apps del stack usan.
+- improve generic HTTP error handling;
+- adjust base CORS configuration;
+- fix SQLite initialization;
+- improve the shared health check;
+- update base Dockerfiles;
+- add minimal shared helpers used by all apps in the stack.
 
-## Cuándo No Editar Commons
+## When Not to Edit Commons
 
-No editar commons cuando el cambio pertenece a una app concreta.
+Do not edit commons when the change belongs to a concrete app.
 
-Ejemplos de cambios que deben quedar en una app:
+Examples that must stay in an app:
 
-- importar movimientos financieros;
-- manejar categorías de Finance OS;
-- agregar endpoints de un dominio;
-- cambiar tema visual de un producto;
-- crear una skill de carga de datos;
-- definir permisos de una app;
-- ajustar textos de interfaz;
-- modificar manifest de una app.
+- importing financial movements;
+- managing Finance OS categories;
+- adding domain endpoints;
+- changing a product visual theme;
+- creating a data-loading skill;
+- defining app permissions;
+- adjusting interface copy;
+- modifying an app manifest.
 
-Si una necesidad aparece primero en una sola app, implementarla en esa app. Moverla a commons solo cuando el comportamiento es claramente común al stack y no depende del dominio.
+If a need first appears in one app, implement it in that app. Move it to commons only when the behavior is clearly common to the stack and independent of domain.
 
-## Relación Con Skeleton y Apps
+## Relationship with Skeleton and Apps
 
-`skeletons/vite-fastapi-sqlite` usa este repo como base compartida del stack.
+`skeletons/vite-fastapi-sqlite` uses this repo as the stack shared base.
 
-Las apps del stack, como `apps/finance-os`, usan commons para infraestructura común y mantienen su lógica propia dentro del repo de la app.
+Stack apps, such as `apps/finance-os`, use commons for shared infrastructure and keep their own logic inside the app repo.
 
-Si se modifica commons, las apps que consumen este repo deben actualizar la referencia de submódulo o copia correspondiente. Ese cambio se versiona dentro del repo de cada app afectada.
+If commons changes, apps that consume this repo must update their submodule reference or corresponding copy. That change is versioned inside each affected app repo.
 
-## Reglas Para Agentes
+## Agent Rules
 
-- Leer el `AGENTS.md` de la app antes de asumir que un cambio pertenece a commons.
-- Mantener commons sin conocimiento de productos específicos.
-- No agregar dependencias pesadas sin necesidad compartida clara.
-- No cambiar defaults que afecten datos locales sin revisar impacto en apps consumidoras.
-- No romper el contrato de `DATABASE_URL`, `CORS_ORIGINS` ni `VITE_API_BASE_URL`.
-- No exponer detalles internos de commons al usuario final salvo que pregunte por implementación.
-- Describir cambios de commons como mejoras de plataforma o stack, no como capacidades visibles de una app.
+- Read the app `AGENTS.md` before assuming a change belongs in commons.
+- Keep commons free of specific product knowledge.
+- Do not add heavy dependencies without a clear shared need.
+- Do not change defaults that affect local data without reviewing impact on consuming apps.
+- Do not break the `DATABASE_URL`, `CORS_ORIGINS`, or `VITE_API_BASE_URL` contract.
+- Do not expose commons internals to the final user unless they ask about implementation.
+- Describe commons changes as platform or stack improvements, not as visible app capabilities.
 
-## Verificación
+## Verification
 
-Después de cambiar commons, verificar al menos una app consumidora del stack.
+After changing commons, verify at least one consuming app in the stack.
 
-Para `finance-os`, las verificaciones relevantes son:
+For `finance-os`, relevant verifications are:
 
 - backend: `scripts/verify.py`;
 - frontend: `npm run verify`;
-- ejecución local vía Docker Compose cuando el cambio afecta Dockerfiles, mounts o servicios.
+- local execution via Docker Compose when the change affects Dockerfiles, mounts, or services.
 
-Los comandos son herramientas internas del agente. No deben presentarse al usuario final como pasos normales de uso.
+Commands are internal agent tools. They must not be presented to the final user as normal usage steps.
