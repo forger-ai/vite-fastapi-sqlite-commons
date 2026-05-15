@@ -83,11 +83,19 @@ def get_agent_thread(desktop_thread_id: str) -> dict[str, Any] | None:
 
 
 def get_agent_run(desktop_thread_id: str, desktop_run_id: str) -> dict[str, Any] | None:
-    return _request("GET", f"/agent-threads/{desktop_thread_id}/runs/{desktop_run_id}", None)
+    return _request(
+        "GET",
+        f"/agent-threads/{desktop_thread_id}/runs/{desktop_run_id}",
+        None,
+    )
 
 
 def cancel_agent_run(desktop_thread_id: str, desktop_run_id: str) -> dict[str, Any]:
-    return _request("POST", f"/agent-threads/{desktop_thread_id}/runs/{desktop_run_id}/cancel", {})
+    return _request(
+        "POST",
+        f"/agent-threads/{desktop_thread_id}/runs/{desktop_run_id}/cancel",
+        {},
+    )
 
 
 def wait_for_run(
@@ -112,11 +120,21 @@ def wait_for_run(
 def _request(method: str, app_path: str, body: dict[str, Any] | None) -> Any:
     config = _config()
     path = f"/v1/apps/{config.app_id}{app_path}"
-    body_bytes = b"" if body is None else json.dumps(_strip_none(body), separators=(",", ":")).encode("utf-8")
+    body_bytes = (
+        b""
+        if body is None
+        else json.dumps(_strip_none(body), separators=(",", ":")).encode("utf-8")
+    )
     body_sha = hashlib.sha256(body_bytes).hexdigest()
     timestamp = datetime.now(UTC).isoformat()
-    signature_payload = "\n".join([method.upper(), path, timestamp, body_sha]).encode("utf-8")
-    signature = hmac.new(config.secret.encode("utf-8"), signature_payload, hashlib.sha256).hexdigest()
+    signature_payload = "\n".join(
+        [method.upper(), path, timestamp, body_sha],
+    ).encode("utf-8")
+    signature = hmac.new(
+        config.secret.encode("utf-8"),
+        signature_payload,
+        hashlib.sha256,
+    ).hexdigest()
     request = Request(
         f"{config.url}{path}",
         data=None if method.upper() == "GET" else body_bytes,
@@ -135,15 +153,21 @@ def _request(method: str, app_path: str, body: dict[str, Any] | None) -> Any:
             return json.loads(raw) if raw else None
     except HTTPError as error:
         raw = error.read().decode("utf-8", errors="replace")
-        raise ForgerDesktopRuntimeError(f"desktop runtime returned {error.code}: {raw}") from error
+        raise ForgerDesktopRuntimeError(
+            f"desktop runtime returned {error.code}: {raw}",
+        ) from error
     except URLError as error:
-        raise ForgerDesktopRuntimeError(f"desktop runtime unavailable: {error.reason}") from error
+        raise ForgerDesktopRuntimeError(
+            f"desktop runtime unavailable: {error.reason}",
+        ) from error
 
 
 def _config() -> ForgerDesktopRuntimeConfig:
     config = _config_or_none()
     if not config:
-        raise ForgerDesktopRuntimeUnavailable("Forger Desktop runtime bridge is not available")
+        raise ForgerDesktopRuntimeUnavailable(
+            "Forger Desktop runtime bridge is not available",
+        )
     return config
 
 
