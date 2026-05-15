@@ -21,6 +21,8 @@ Belongs in commons:
 - SQLModel/SQLite database helper;
 - shared health check endpoint;
 - shared CORS helper;
+- shared Desktop runtime HTTP and event helpers;
+- shared FastAPI websocket channel hub;
 - shared frontend HTTP client;
 - base Docker Compose definitions extended by apps.
 
@@ -44,6 +46,9 @@ backend/
   database.py       SQLModel engine, init_db, and sessions
   health.py         GET /health router with database validation
   cors.py           CORS_ORIGINS reader from environment
+  forger_desktop.py Signed HTTP client for the Forger Desktop runtime bridge
+  desktop_events.py Signed websocket client for Desktop agent events
+  realtime.py       Generic FastAPI channel hub and `/api/realtime/ws` router
 
 frontend/
   Dockerfile        Frontend base image with Node/Vite
@@ -78,6 +83,24 @@ Apps must import their models before calling `init_db()`. The stack convention u
 - `allowed_origins()` helper;
 - `CORS_ORIGINS` reader from environment;
 - fallback to local Vite origins.
+
+`backend/forger_desktop.py` defines:
+
+- signed HTTP requests to the local Forger Desktop runtime bridge;
+- helpers for creating agent threads, starting runs, inspecting threads/runs, canceling runs, and waiting for terminal run status;
+- the `FORGER_DESKTOP_RUNTIME_URL`, `FORGER_DESKTOP_RUNTIME_APP_ID`, and `FORGER_DESKTOP_RUNTIME_SECRET` environment contract.
+
+`backend/desktop_events.py` defines:
+
+- a signed websocket client for the local Forger Desktop runtime bridge;
+- HMAC validation for every incoming Desktop event envelope;
+- reconnect with backoff and in-memory event deduplication.
+
+`backend/realtime.py` defines:
+
+- `ChannelHub` for publishing app events to subscribed frontend sockets;
+- `create_realtime_router()` for mounting a generic `/api/realtime/ws` endpoint;
+- a simple subscribe/unsubscribe message protocol.
 
 ## Frontend Contract
 
