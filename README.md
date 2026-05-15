@@ -12,6 +12,9 @@ backend/
   database.py       — SQLAlchemy session factory
   health.py         — /health endpoint
   cors.py           — CORS middleware setup
+  forger_desktop.py — Signed HTTP client for the local Desktop runtime bridge
+  desktop_events.py — Signed websocket client for Desktop agent events
+  realtime.py       — Generic FastAPI channel hub and websocket router
 frontend/
   Dockerfile        — Node/Vite image
   client.ts         — Axios API client
