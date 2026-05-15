@@ -9,7 +9,6 @@ from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-
 JsonDict = dict[str, Any]
 ChannelAuthorizer = Callable[[str], bool]
 
@@ -99,24 +98,28 @@ def create_realtime_router(
                 if action == "subscribe" and allowed(channel):
                     await channel_hub.subscribe(channel, websocket)
                     subscribed.add(channel)
-                    await websocket.send_json({
-                        "event_id": str(uuid4()),
-                        "channel": channel,
-                        "type": "subscription.confirmed",
-                        "payload": {},
-                        "created_at": utcnow_iso(),
-                    })
+                    await websocket.send_json(
+                        {
+                            "event_id": str(uuid4()),
+                            "channel": channel,
+                            "type": "subscription.confirmed",
+                            "payload": {},
+                            "created_at": utcnow_iso(),
+                        }
+                    )
                 elif action == "unsubscribe" and channel in subscribed:
                     await channel_hub.unsubscribe(channel, websocket)
                     subscribed.discard(channel)
                 else:
-                    await websocket.send_json({
-                        "event_id": str(uuid4()),
-                        "channel": channel,
-                        "type": "subscription.rejected",
-                        "payload": {"reason": "invalid_subscription"},
-                        "created_at": utcnow_iso(),
-                    })
+                    await websocket.send_json(
+                        {
+                            "event_id": str(uuid4()),
+                            "channel": channel,
+                            "type": "subscription.rejected",
+                            "payload": {"reason": "invalid_subscription"},
+                            "created_at": utcnow_iso(),
+                        }
+                    )
         except WebSocketDisconnect:
             await channel_hub.disconnect(websocket)
 

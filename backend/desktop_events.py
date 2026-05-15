@@ -13,7 +13,6 @@ from urllib.parse import quote, urlparse, urlunparse
 
 import websockets
 
-
 JsonDict = dict[str, Any]
 EventHandler = Callable[[JsonDict], Awaitable[None]]
 SIGNATURE_WINDOW_SECONDS = 5 * 60
