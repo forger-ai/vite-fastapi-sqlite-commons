@@ -11,7 +11,6 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-
 TERMINAL_RUN_STATUSES = {"completed", "failed", "canceled"}
 
 
