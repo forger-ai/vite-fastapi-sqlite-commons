@@ -12,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 TERMINAL_RUN_STATUSES = {"completed", "failed", "canceled"}
+TERMINAL_TASK_STATUSES = {"completed", "failed", "canceled"}
 
 
 class ForgerDesktopRuntimeError(RuntimeError):
@@ -31,6 +32,57 @@ class ForgerDesktopRuntimeConfig:
 
 def is_desktop_runtime_available() -> bool:
     return bool(_config_or_none())
+
+
+def get_agent_task_status() -> dict[str, Any]:
+    return _request("GET", "/agent-tasks/status", None)
+
+
+def start_agent_task(
+    *,
+    template_id: str,
+    locale: str | None = None,
+    arguments: dict[str, Any] | None = None,
+    variables: dict[str, Any] | None = None,
+    attachments: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/agent-tasks",
+        {
+            "templateId": template_id,
+            "locale": locale or None,
+            "arguments": arguments or None,
+            "variables": variables or None,
+            "attachments": attachments or None,
+        },
+    )
+
+
+def get_agent_task(run_id: str) -> dict[str, Any] | None:
+    return _request("GET", f"/agent-tasks/{run_id}", None)
+
+
+def cancel_agent_task(run_id: str) -> dict[str, Any]:
+    return _request("POST", f"/agent-tasks/{run_id}/cancel", {})
+
+
+def wait_for_task(
+    *,
+    run_id: str,
+    timeout_seconds: int = 600,
+    poll_interval_seconds: float = 1.0,
+) -> dict[str, Any]:
+    deadline = time.monotonic() + max(1, timeout_seconds)
+    last: dict[str, Any] | None = None
+    while time.monotonic() < deadline:
+        task = get_agent_task(run_id)
+        if task:
+            last = task
+            if str(task.get("status") or "") in TERMINAL_TASK_STATUSES:
+                return task
+        time.sleep(max(0.2, poll_interval_seconds))
+    raise ForgerDesktopRuntimeError(f"agent task timed out: {last or run_id}")
 
 
 def create_agent_thread(

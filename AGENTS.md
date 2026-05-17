@@ -88,6 +88,7 @@ Apps must import their models before calling `init_db()`. The stack convention u
 
 - signed HTTP requests to the local Forger Desktop runtime bridge;
 - helpers for creating agent threads, starting runs, inspecting threads/runs, canceling runs, and waiting for terminal run status;
+- helpers for checking assistant task status, starting manifest prompt-template tasks, inspecting tasks, canceling tasks, and waiting for terminal task status;
 - the `FORGER_DESKTOP_RUNTIME_URL`, `FORGER_DESKTOP_RUNTIME_APP_ID`, and `FORGER_DESKTOP_RUNTIME_SECRET` environment contract.
 
 `backend/desktop_events.py` defines:
