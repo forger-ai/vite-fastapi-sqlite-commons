@@ -11,7 +11,6 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-
 JsonDict = dict[str, Any]
 ToolHandler = Callable[[JsonDict], Any]
 
