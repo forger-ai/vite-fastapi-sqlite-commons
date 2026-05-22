@@ -20,6 +20,7 @@ async function importClient(baseUrl?: string) {
 
 afterEach(() => {
   vi.resetModules();
+  vi.doUnmock("../remoteTunnel");
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -63,6 +64,32 @@ describe("commons frontend client", () => {
     expect(request.headers.has("Content-Type")).toBe(false);
   });
 
+  it("sends FormData through remote RPC with its generated multipart content type", async () => {
+    let capturedRequest: unknown = null;
+    vi.doMock("../remoteTunnel", () => ({
+      isForgerRemoteTunnel: () => true,
+      remoteFetch: vi.fn(async (input: unknown) => {
+        capturedRequest = input;
+        return jsonResponse({ uploaded: true });
+      }),
+    }));
+    const { post } = await importClient("http://api.test");
+    const formData = new FormData();
+    formData.append("title", "Receipt");
+    formData.append("file", new Blob(["file contents"]), "receipt.txt");
+
+    const result = await post<{ uploaded: boolean }>("/uploads", formData);
+
+    expect(result).toEqual({ uploaded: true });
+    expect(capturedRequest).toMatchObject({
+      method: "POST",
+      path: "/uploads",
+    });
+    const headers = (capturedRequest as { headers: Record<string, string> }).headers;
+    expect(headers["content-type"]).toContain("multipart/form-data; boundary=");
+    expect((capturedRequest as { bodyBase64: string | null }).bodyBase64).toEqual(expect.any(String));
+  });
+
   it("returns undefined for 204 responses", async () => {
     const fetchMock = createFetchMock();
     const { del } = await importClient("http://api.test");
@@ -90,6 +117,21 @@ describe("commons frontend client", () => {
       message: "Item not found",
       name: "ApiError",
       status: 404,
+    });
+  });
+
+  it("formats object JSON detail payloads instead of showing object placeholders", async () => {
+    const fetchMock = createFetchMock();
+    const { get } = await importClient("http://api.test");
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ detail: { error: "Invalid upload", field: "file" } }, { status: 422 }),
+    );
+
+    await expect(get("/uploads/missing")).rejects.toMatchObject({
+      body: { detail: { error: "Invalid upload", field: "file" } },
+      message: JSON.stringify({ error: "Invalid upload", field: "file" }),
+      name: "ApiError",
+      status: 422,
     });
   });
 

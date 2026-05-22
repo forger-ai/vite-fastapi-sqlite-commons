@@ -66,7 +66,7 @@ def test_validate_event_rejects_invalid_envelopes_and_accepts_signed_event() -> 
     tampered = {**valid, "payload": {"changed": True}}
     naive_time = signed_desktop_event(
         config,
-        created_at=datetime.now().replace(microsecond=0).isoformat(),
+        created_at=datetime.now(UTC).replace(tzinfo=None, microsecond=0).isoformat(),
     )
 
     assert desktop_events.validate_event(wrong_app, config) is False
@@ -188,4 +188,3 @@ def test_client_run_retries_generic_errors_and_propagates_cancellation(
 
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(canceled_client.run(handler))
-
