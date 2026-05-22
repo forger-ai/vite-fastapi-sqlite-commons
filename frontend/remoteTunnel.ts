@@ -1,5 +1,7 @@
 export const REMOTE_RPC_PATH = "/__forger_remote_rpc";
 
+import { FORGER_LOGO_SVG } from "./forgerBrand";
+
 const REMOTE_FLAG = import.meta.env.VITE_FORGER_REMOTE_TUNNEL === "true";
 const REMOTE_SESSION_ID = import.meta.env.VITE_FORGER_REMOTE_SESSION_ID ?? "";
 const REMOTE_HANDSHAKE_URL = import.meta.env.VITE_FORGER_CLOUD_HANDSHAKE_URL ?? "";
@@ -115,7 +117,7 @@ export function mountForgerRemoteFab(): void {
   button.type = "button";
   button.setAttribute("aria-label", "Forger Cloud");
   button.title = "Forger Cloud";
-  button.innerHTML = forgerCloudIcon();
+  button.innerHTML = FORGER_LOGO_SVG;
   Object.assign(button.style, {
     position: "fixed",
     right: "18px",
@@ -126,7 +128,7 @@ export function mountForgerRemoteFab(): void {
     width: "46px",
     height: "46px",
     padding: "0",
-    background: "#111827",
+    background: "#0D1117",
     color: "#ffffff",
     display: "grid",
     placeItems: "center",
@@ -333,15 +335,6 @@ function toggleRemoteFabMenu(anchor: HTMLElement): void {
     document.removeEventListener("mousedown", closeMenu);
   };
   setTimeout(() => document.addEventListener("mousedown", closeMenu), 0);
-}
-
-function forgerCloudIcon(): string {
-  return `
-    <svg aria-hidden="true" width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="4" width="24" height="24" rx="8" fill="#8DB4E2"/>
-      <path d="M11 22V9.8h10.2v3H14.5v2.5h5.8v2.9h-5.8V22H11Z" fill="#0B1117"/>
-    </svg>
-  `;
 }
 
 async function authorizeLocalTunnelReminder(tunnelUrl: string, response: Response): Promise<boolean> {
