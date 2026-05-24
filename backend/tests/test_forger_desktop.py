@@ -35,6 +35,7 @@ def test_runtime_reports_unavailable_without_config(monkeypatch) -> None:
 def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env) -> None:
     fake = FakeDesktopRuntime()
     base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json("GET", f"{base}/context", {"locale": "en", "rawLocale": "en-US"})
     fake.add_json("GET", f"{base}/agent-tasks/status", {"available": True})
     fake.add_json("POST", f"{base}/agent-tasks", {"runId": "task_1"})
     fake.add_json("GET", f"{base}/agent-tasks/task_1", {"status": "completed"})
@@ -42,6 +43,7 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
     monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
 
     assert forger_desktop.is_desktop_runtime_available() is True
+    assert forger_desktop.get_app_context() == {"locale": "en", "rawLocale": "en-US"}
     assert forger_desktop.get_agent_task_status() == {"available": True}
     assert forger_desktop.start_agent_task(template_id="template") == {
         "runId": "task_1"
@@ -56,7 +58,12 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
     assert forger_desktop.get_agent_task("task_1") == {"status": "completed"}
     assert forger_desktop.cancel_agent_task("task_1") == {"canceled": True}
 
-    first_post = fake.requests[1]
+    assert_signed_desktop_request(
+        fake.requests[0],
+        app_id=desktop_env["app_id"],
+        secret=desktop_env["secret"],
+    )
+    first_post = fake.requests[2]
     assert first_post.body == b'{"templateId":"template"}'
     assert_signed_desktop_request(
         first_post,
@@ -231,4 +238,3 @@ def test_wait_for_run_times_out_with_run_id_when_no_run_is_seen(monkeypatch) -> 
             desktop_run_id="run_1",
             timeout_seconds=0,
         )
-

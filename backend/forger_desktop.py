@@ -38,6 +38,10 @@ def get_agent_task_status() -> dict[str, Any]:
     return _request("GET", "/agent-tasks/status", None)
 
 
+def get_app_context() -> dict[str, Any]:
+    return _request("GET", "/context", None)
+
+
 def start_agent_task(
     *,
     template_id: str,
