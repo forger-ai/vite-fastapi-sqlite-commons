@@ -32,6 +32,24 @@ def test_runtime_reports_unavailable_without_config(monkeypatch) -> None:
         forger_desktop.get_agent_task_status()
 
 
+def test_runtime_url_normalizes_legacy_bridge_paths() -> None:
+    assert forger_desktop.normalize_runtime_url("") == ""
+    assert (
+        forger_desktop.normalize_runtime_url(
+            " http://127.0.0.1:1234/forgerApp/bridge/ ",
+        )
+        == "http://127.0.0.1:1234"
+    )
+    assert (
+        forger_desktop.normalize_runtime_url("http://127.0.0.1:1234/api/bridge")
+        == "http://127.0.0.1:1234"
+    )
+    assert (
+        forger_desktop.normalize_runtime_url("http://127.0.0.1:1234")
+        == "http://127.0.0.1:1234"
+    )
+
+
 def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env) -> None:
     fake = FakeDesktopRuntime()
     base = f"/v1/apps/{desktop_env['app_id']}"
@@ -75,9 +93,25 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
 def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> None:
     fake = FakeDesktopRuntime()
     base = f"/v1/apps/{desktop_env['app_id']}"
-    fake.add_json("POST", f"{base}/agent-threads", {"id": "thread_1"})
+    fake.add_json(
+        "POST",
+        f"{base}/agents/agent/start",
+        {
+            "desktop_thread_id": "thread_1",
+            "active_run": {"desktop_run_id": "run_start", "status": "running"},
+        },
+    )
     fake.add_json("GET", f"{base}/agent-threads/thread_1", {"id": "thread_1"})
-    fake.add_json("POST", f"{base}/agent-threads/thread_1/runs", {"id": "run_1"})
+    fake.add_json(
+        "POST",
+        f"{base}/agent-threads/thread_1/resume",
+        {"desktop_run_id": "run_1", "status": "running"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/agent-threads/thread_1/runs/run_1/steer",
+        {"desktop_run_id": "run_2", "status": "running"},
+    )
     fake.add_json(
         "GET",
         f"{base}/agent-threads/thread_1/runs/run_1",
@@ -90,11 +124,16 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
     )
     monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
 
+    assert forger_desktop.start_manifest_agent_thread(
+        agent_id="agent",
+        title="Thread",
+        variables={"message": "Start"},
+    )["desktop_thread_id"] == "thread_1"
     assert forger_desktop.create_agent_thread(
         title="Thread",
         manifest_agent_id="agent",
         initial_prompt="Start",
-    ) == {"id": "thread_1"}
+    )["threadId"] == "thread_1"
     assert forger_desktop.create_agent_thread(
         title="Thread",
         manifest_agent_id="agent",
@@ -102,19 +141,28 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
         runtime={"mode": "test"},
         metadata={"source": "pytest"},
         workspace_path="/tmp/app",
-    ) == {"id": "thread_1"}
+    )["id"] == "thread_1"
     assert forger_desktop.get_agent_thread("thread_1") == {"id": "thread_1"}
+    assert forger_desktop.resume_manifest_agent_thread(
+        desktop_thread_id="thread_1",
+        variables={"message": "Hello"},
+    ) == {"desktop_run_id": "run_1", "status": "running"}
     assert forger_desktop.start_agent_run(
         desktop_thread_id="thread_1",
         message="Hello",
-    ) == {"id": "run_1"}
+    )["runId"] == "run_1"
     assert forger_desktop.start_agent_run(
         desktop_thread_id="thread_1",
         message="Hello",
         context="Context",
         runtime={"mode": "test"},
         workspace_path="/tmp/app",
-    ) == {"id": "run_1"}
+    )["id"] == "run_1"
+    assert forger_desktop.steer_manifest_agent_run(
+        desktop_thread_id="thread_1",
+        desktop_run_id="run_1",
+        variables={"instruction": "Adjust"},
+    ) == {"desktop_run_id": "run_2", "status": "running"}
     assert forger_desktop.get_agent_run("thread_1", "run_1") == {
         "status": "completed"
     }
@@ -127,6 +175,34 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
         app_id=desktop_env["app_id"],
         secret=desktop_env["secret"],
     )
+
+
+def test_legacy_aliases_preserve_existing_values() -> None:
+    thread = forger_desktop._with_legacy_thread_aliases(
+        {
+            "desktop_thread_id": "desktop_thread",
+            "threadId": "existing_thread",
+            "id": "existing_id",
+        }
+    )
+    run = forger_desktop._with_legacy_run_aliases(
+        {
+            "desktop_run_id": "desktop_run",
+            "runId": "existing_run",
+            "id": "existing_id",
+        }
+    )
+
+    assert thread == {
+        "desktop_thread_id": "desktop_thread",
+        "threadId": "existing_thread",
+        "id": "existing_id",
+    }
+    assert run == {
+        "desktop_run_id": "desktop_run",
+        "runId": "existing_run",
+        "id": "existing_id",
+    }
 
 
 def test_request_returns_none_for_empty_desktop_response(
