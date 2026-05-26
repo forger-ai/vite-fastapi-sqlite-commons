@@ -4,7 +4,7 @@
 
 This repo contains the shared files for the `vite-fastapi-sqlite` stack.
 
-`vite-fastapi-sqlite` is the currently available Forger app stack. Apps in this stack combine a Python/FastAPI backend, local SQLite database, Vite + React frontend, and UI with MUI / Material Design.
+`vite-fastapi-sqlite` is the currently available Forger app stack. Apps in this stack combine a Python/FastAPI backend, local SQLite database, Vite + React frontend, and UI with Tailwind CSS, shadcn/ui copied components, and Radix primitives.
 
 This repo does not contain a final app. It contains common infrastructure that stack apps consume as the `commons/` submodule or as a published copy inside catalog structures.
 
