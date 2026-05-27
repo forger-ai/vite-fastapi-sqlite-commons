@@ -1,4 +1,5 @@
 export const REMOTE_RPC_PATH = "/__forger_remote_rpc";
+export const REMOTE_WS_PATH = "/__forger_remote_ws";
 
 import { FORGER_LOGO_SVG } from "./forgerBrand";
 
@@ -6,7 +7,7 @@ const REMOTE_FLAG = import.meta.env.VITE_FORGER_REMOTE_TUNNEL === "true";
 const REMOTE_SESSION_ID = import.meta.env.VITE_FORGER_REMOTE_SESSION_ID ?? "";
 const REMOTE_HANDSHAKE_URL = import.meta.env.VITE_FORGER_CLOUD_HANDSHAKE_URL ?? "";
 
-type RemoteHandshake = {
+export type RemoteHandshake = {
   sessionId: string;
   tunnelUrl: string;
   desktopPublicKeyJwk: JsonWebKey;
@@ -31,18 +32,18 @@ type RemoteRpcResponse = {
   bodyBase64: string | null;
 };
 
-type RemoteEnvelope = {
+export type RemoteEnvelope = {
   sessionId: string;
   keyId: string;
   nonce: string;
   timestamp: string;
-  browserPublicKeyJwk: JsonWebKey;
+  browserPublicKeyJwk?: JsonWebKey;
   ciphertext: string;
 };
 
 let remoteStatePromise: Promise<RemoteState> | null = null;
 
-class RemoteState {
+export class RemoteState {
   constructor(
     readonly handshake: RemoteHandshake,
     readonly key: CryptoKey,
@@ -77,7 +78,7 @@ async function remoteFetchOnce(input: RemoteRpcRequest, signal: AbortSignal | un
     showRemoteOverlay(error);
     throw error;
   });
-  const envelope = await encryptEnvelope(state, input);
+  const envelope = await encryptRemoteEnvelope(state, input);
   const response = await fetch(`${state.handshake.tunnelUrl.replace(/\/+$/, "")}${REMOTE_RPC_PATH}`, {
     method: "POST",
     headers: {
@@ -97,7 +98,7 @@ async function remoteFetchOnce(input: RemoteRpcRequest, signal: AbortSignal | un
   if (!payload?.ciphertext) {
     return new Response("remote_rpc_response_invalid", { status: 502 });
   }
-  const decrypted = await decryptEnvelope<RemoteRpcResponse>(state, payload);
+  const decrypted = await decryptRemoteEnvelope<RemoteRpcResponse>(state, payload);
   return new Response(toArrayBuffer(base64ToBytes(decrypted.bodyBase64)), {
     status: decrypted.status,
     headers: decrypted.headers,
@@ -148,7 +149,7 @@ export async function disconnectRemoteSession(): Promise<void> {
   window.location.assign(state?.handshake.portalRootUrl || "/portal");
 }
 
-async function getRemoteState(): Promise<RemoteState> {
+export async function getRemoteState(): Promise<RemoteState> {
   if (!REMOTE_FLAG) {
     throw new Error("forger_remote_tunnel_disabled");
   }
@@ -207,7 +208,7 @@ async function createRemoteState(): Promise<RemoteState> {
   return new RemoteState(handshake, key, keyId, browserPublicKeyJwk);
 }
 
-async function encryptEnvelope(state: RemoteState, payload: unknown): Promise<RemoteEnvelope> {
+export async function encryptRemoteEnvelope(state: RemoteState, payload: unknown): Promise<RemoteEnvelope> {
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const timestamp = new Date().toISOString();
   const plaintext = new TextEncoder().encode(JSON.stringify(payload));
@@ -226,7 +227,7 @@ async function encryptEnvelope(state: RemoteState, payload: unknown): Promise<Re
   };
 }
 
-async function decryptEnvelope<T>(state: RemoteState, envelope: RemoteEnvelope): Promise<T> {
+export async function decryptRemoteEnvelope<T>(state: RemoteState, envelope: RemoteEnvelope): Promise<T> {
   const plaintext = await crypto.subtle.decrypt(
     {
       name: "AES-GCM",

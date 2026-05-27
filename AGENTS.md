@@ -53,6 +53,8 @@ backend/
 frontend/
   Dockerfile        Frontend base image with Node/Vite
   client.ts         Typed HTTP client and error handling
+  query.ts          TanStack Query provider, client defaults, and query key helpers
+  realtime.ts       Realtime client for local WebSocket and encrypted remote tunnel sessions
 
 docker-compose.base.yml
   Base backend/frontend services used by apps in the stack
@@ -117,6 +119,18 @@ Apps must import their models before calling `init_db()`. The stack convention u
 - network and HTTP error handling.
 
 Apps in the stack must use this shared client for base HTTP calls. If an app needs domain functions, it must create local wrappers in its own `frontend/src/api/`.
+
+`frontend/query.ts` defines:
+
+- a conservative TanStack Query client for server state;
+- a reusable provider for stack apps;
+- shared query key helpers for app-local wrappers.
+
+`frontend/realtime.ts` defines:
+
+- a shared client for `/api/realtime/ws`;
+- local direct WebSocket connections;
+- encrypted remote WebSocket frames through Forger Desktop remote tunnel sessions.
 
 ## Docker Compose Contract
 

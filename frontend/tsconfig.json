@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "types": ["vite/client", "vitest"]
   },
-  "include": ["client.ts", "testing/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
+  "include": ["client.ts", "query.ts", "realtime.ts", "remoteTunnel.ts", "testing/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
 }

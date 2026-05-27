@@ -22,6 +22,7 @@ DEFAULT_BLOCKED_PREFIXES = (
     "/mcp",
     "/__forger_internal",
     "/__forger_remote_rpc",
+    "/__forger_remote_ws",
 )
 
 

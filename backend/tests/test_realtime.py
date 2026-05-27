@@ -1,11 +1,28 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any, cast
 
 from starlette.testclient import TestClient
 
-from realtime import ChannelHub, create_realtime_router, utcnow_iso
+from realtime import (
+    ChannelHub,
+    create_realtime_router,
+    is_remote_tunnel_websocket,
+    utcnow_iso,
+)
 from testing.apps import minimal_fastapi_app
+
+
+def test_is_remote_tunnel_websocket_reads_forwarded_header() -> None:
+    class Socket:
+        def __init__(self, value: str | None) -> None:
+            self.headers = {"x-forger-remote-tunnel": value} if value is not None else {}
+
+    assert is_remote_tunnel_websocket(cast(Any, Socket("true"))) is True
+    assert is_remote_tunnel_websocket(cast(Any, Socket(" TRUE "))) is True
+    assert is_remote_tunnel_websocket(cast(Any, Socket("false"))) is False
+    assert is_remote_tunnel_websocket(cast(Any, Socket(None))) is False
 
 
 def test_channel_hub_publish_subscribe_unsubscribe_and_stale_cleanup() -> None:

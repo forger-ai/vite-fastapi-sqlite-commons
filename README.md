@@ -17,7 +17,9 @@ backend/
   realtime.py       — Generic FastAPI channel hub and websocket router
 frontend/
   Dockerfile        — Node/Vite image
-  client.ts         — Axios API client
+  client.ts         — Typed HTTP client
+  query.ts          — TanStack Query defaults and provider
+  realtime.ts       — Local and encrypted remote realtime client
 docker-compose.base.yml  — Base service definitions (extends)
 ```
 

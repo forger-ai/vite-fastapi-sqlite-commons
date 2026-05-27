@@ -72,5 +72,6 @@ def test_remote_tunnel_helpers_read_headers_and_block_paths() -> None:
     }
     assert response.json() == {"remote": True, "session_id": "session-1"}
     assert path_is_blocked("/__forger_internal/state")
+    assert path_is_blocked("/__forger_remote_ws")
     assert path_is_blocked("/api/../secret")
     assert not path_is_blocked("/api/items")

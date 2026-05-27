@@ -11,10 +11,15 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 JsonDict = dict[str, Any]
 ChannelAuthorizer = Callable[[str], bool]
+REMOTE_TUNNEL_HEADER = "x-forger-remote-tunnel"
 
 
 def utcnow_iso() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def is_remote_tunnel_websocket(websocket: WebSocket) -> bool:
+    return websocket.headers.get(REMOTE_TUNNEL_HEADER, "").strip().lower() == "true"
 
 
 class ChannelHub:
