@@ -15,6 +15,14 @@ afterEach(() => {
 });
 
 describe("remote tunnel mobile access grant", () => {
+  it("sends the localtunnel bypass header on remote RPC requests", async () => {
+    const { REMOTE_RPC_HEADERS } = await importRemoteTunnel();
+
+    expect(REMOTE_RPC_HEADERS).toMatchObject({
+      "Bypass-Tunnel-Reminder": "true",
+    });
+  });
+
   it("reads the mobile access token from the URL fragment and clears the visible URL", async () => {
     const replaceState = vi.fn();
     vi.stubGlobal("document", { title: "Finance OS" });
@@ -72,5 +80,15 @@ describe("remote tunnel mobile access grant", () => {
 
     expect(remoteMobileAccessToken()).toBeUndefined();
     expect(remoteAssetHeaders({ Accept: "application/json" })).toEqual({ Accept: "application/json" });
+  });
+});
+
+describe("remote tunnel Forger brand", () => {
+  it("uses embedded mobile app brand logos instead of the legacy SVG", async () => {
+    const { FORGER_LOGO_MARKUP } = await import("../forgerBrand");
+
+    expect(FORGER_LOGO_MARKUP).toContain("data:image/png;base64,");
+    expect(FORGER_LOGO_MARKUP).toContain("prefers-color-scheme: dark");
+    expect(FORGER_LOGO_MARKUP).not.toContain("<svg");
   });
 });

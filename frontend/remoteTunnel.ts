@@ -1,12 +1,18 @@
 export const REMOTE_RPC_PATH = "/__forger_remote_rpc";
 export const REMOTE_WS_PATH = "/__forger_remote_ws";
 
-import { FORGER_LOGO_SVG } from "./forgerBrand";
+import { FORGER_LOGO_MARKUP } from "./forgerBrand";
 
 const REMOTE_FLAG = import.meta.env.VITE_FORGER_REMOTE_TUNNEL === "true";
 const REMOTE_SESSION_ID = import.meta.env.VITE_FORGER_REMOTE_SESSION_ID ?? "";
 const REMOTE_HANDSHAKE_URL = import.meta.env.VITE_FORGER_CLOUD_HANDSHAKE_URL ?? "";
 const MOBILE_ACCESS_TOKEN_HASH_KEY = "forgerMobileAccessToken";
+
+export const REMOTE_RPC_HEADERS = {
+  Accept: "application/json",
+  "Bypass-Tunnel-Reminder": "true",
+  "Content-Type": "text/plain;charset=UTF-8",
+};
 
 export type RemoteHandshake = {
   sessionId: string;
@@ -83,10 +89,7 @@ async function remoteFetchOnce(input: RemoteRpcRequest, signal: AbortSignal | un
   const envelope = await encryptRemoteEnvelope(state, input);
   const response = await fetch(`${state.handshake.tunnelUrl.replace(/\/+$/, "")}${REMOTE_RPC_PATH}`, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "text/plain;charset=UTF-8",
-    },
+    headers: REMOTE_RPC_HEADERS,
     body: JSON.stringify(envelope),
     signal,
   });
@@ -120,7 +123,7 @@ export function mountForgerRemoteFab(): void {
   button.type = "button";
   button.setAttribute("aria-label", "Forger Cloud");
   button.title = "Forger Cloud";
-  button.innerHTML = FORGER_LOGO_SVG;
+  button.innerHTML = FORGER_LOGO_MARKUP;
   Object.assign(button.style, {
     position: "fixed",
     right: "18px",
