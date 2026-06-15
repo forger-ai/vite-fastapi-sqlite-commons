@@ -92,6 +92,26 @@ export const patch = <T>(path: string, body: unknown, signal?: AbortSignal) => r
 export const put  = <T>(path: string, body: unknown, signal?: AbortSignal) => request<T>(path, { method: "PUT", body, signal });
 export const del  = <T>(path: string, signal?: AbortSignal) => request<T>(path, { method: "DELETE", signal });
 
+export type WebSocketQueryValue = string | number | boolean | null | undefined;
+
+export function apiWebSocketUrl(
+  path: string,
+  params: Record<string, WebSocketQueryValue> = {},
+): string {
+  const base = new URL(API_BASE_URL);
+  base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
+  const basePath = base.pathname === "/" ? "" : base.pathname.replace(/\/+$/, "");
+  const targetPath = path.startsWith("/") ? path : `/${path}`;
+  base.pathname = `${basePath}${targetPath}`;
+  base.search = "";
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      base.searchParams.set(key, String(value));
+    }
+  }
+  return base.toString();
+}
+
 type SerializedRemoteBody = {
   bodyBase64: string | null;
   contentType?: string;

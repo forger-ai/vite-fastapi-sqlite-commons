@@ -50,7 +50,7 @@ afterEach(() => {
 
 describe("realtime client", () => {
   it("connects locally and sends subscribe messages to the stack realtime endpoint", async () => {
-    const { createRealtimeClient } = await importRealtime("https://api.test///");
+    const { createRealtimeClient } = await importRealtime("https://api.test/__forger_api///");
     const client = createRealtimeClient();
     const connected = client.connect();
     await vi.waitFor(() => expect(FakeWebSocket.instances.length).toBe(1));
@@ -59,7 +59,7 @@ describe("realtime client", () => {
 
     await client.subscribe("status");
 
-    expect(FakeWebSocket.instances[0].url).toBe("wss://api.test/api/realtime/ws");
+    expect(FakeWebSocket.instances[0].url).toBe("wss://api.test/__forger_api/api/realtime/ws");
     expect(FakeWebSocket.instances[0].sent).toEqual([JSON.stringify({ action: "subscribe", channel: "status" })]);
   });
 

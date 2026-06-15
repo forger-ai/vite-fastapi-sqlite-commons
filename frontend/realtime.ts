@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./client";
+import { apiWebSocketUrl } from "./client";
 import {
   REMOTE_WS_PATH,
   decryptRemoteEnvelope,
@@ -116,7 +116,7 @@ async function realtimeUrl(remoteStatePromise: Promise<{ handshake: { tunnelUrl:
     const state = await (remoteStatePromise ?? getRemoteState());
     return `${toWebSocketBase(state.handshake.tunnelUrl)}${REMOTE_WS_PATH}`;
   }
-  return `${toWebSocketBase(API_BASE_URL)}/api/realtime/ws`;
+  return apiWebSocketUrl("/api/realtime/ws");
 }
 
 function toWebSocketBase(url: string): string {

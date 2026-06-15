@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 TERMINAL_RUN_STATUSES = {"completed", "failed", "canceled"}
@@ -41,6 +41,139 @@ def get_agent_task_status() -> dict[str, Any]:
 
 def get_app_context() -> dict[str, Any]:
     return _request("GET", "/context", None)
+
+
+def list_audio_devices() -> dict[str, Any]:
+    return _request("GET", "/audio/devices", None)
+
+
+def list_audio_input_devices() -> dict[str, Any]:
+    return _request("GET", "/audio/input-devices", None)
+
+
+def list_audio_output_devices() -> dict[str, Any]:
+    return _request("GET", "/audio/output-devices", None)
+
+
+def start_audio_transcription_session(
+    *,
+    device_id: str | None = None,
+    task: str | None = None,
+    language: str | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/audio/transcriptions",
+        {
+            "deviceId": device_id or None,
+            "task": task or None,
+            "language": language or None,
+        },
+    )
+
+
+def stop_audio_transcription_session(consumer_id: str) -> dict[str, Any] | None:
+    return _request(
+        "DELETE",
+        f"/audio/transcriptions/{quote(consumer_id, safe='')}",
+        None,
+    )
+
+
+def transcribe_audio_file(
+    *,
+    path: str,
+    task: str | None = None,
+    language: str | None = None,
+    model: str | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/audio/file-transcriptions",
+        {
+            "path": path,
+            "task": task or None,
+            "language": language or None,
+            "model": model or None,
+        },
+    )
+
+
+def start_audio_file_transcription_job(
+    *,
+    path: str,
+    task: str | None = None,
+    language: str | None = None,
+    model: str | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/audio/file-transcription-jobs",
+        {
+            "path": path,
+            "task": task or None,
+            "language": language or None,
+            "model": model or None,
+        },
+    )
+
+
+def get_audio_file_transcription_job(job_id: str) -> dict[str, Any]:
+    return _request("GET", f"/audio/file-transcription-jobs/{quote(job_id, safe='')}", None)
+
+
+def cancel_audio_file_transcription_job(job_id: str) -> dict[str, Any]:
+    return _request("POST", f"/audio/file-transcription-jobs/{quote(job_id, safe='')}/cancel", {})
+
+
+def synthesize_speech(
+    *,
+    text: str,
+    model: str,
+    voice: str,
+    speed: float | None = None,
+    format: str | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/audio/synthesis",
+        {
+            "text": text,
+            "model": model,
+            "voice": voice,
+            "speed": speed,
+            "format": format or None,
+        },
+    )
+
+
+def say_text(
+    *,
+    text: str,
+    model: str,
+    voice: str,
+    output_device_id: str | None = None,
+    speed: float | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/audio/say",
+        {
+            "text": text,
+            "model": model,
+            "voice": voice,
+            "outputDeviceId": output_device_id or None,
+            "speed": speed,
+        },
+    )
+
+
+def get_audio_playback(playback_id: str) -> dict[str, Any]:
+    return _request("GET", f"/audio/playbacks/{playback_id}", None)
+
+
+def cancel_audio_playback(playback_id: str) -> dict[str, Any]:
+    return _request("POST", f"/audio/playbacks/{playback_id}/cancel", {})
 
 
 def start_agent_task(

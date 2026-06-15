@@ -90,6 +90,163 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
     )
 
 
+def test_audio_runtime_requests_are_signed_and_use_exact_routes(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json(
+        "GET",
+        f"{base}/audio/devices",
+        {"inputDevices": [{"id": "default"}], "outputDevices": [{"id": "speaker"}]},
+    )
+    fake.add_json("GET", f"{base}/audio/input-devices", {"inputDevices": []})
+    fake.add_json("GET", f"{base}/audio/output-devices", {"outputDevices": []})
+    fake.add_json(
+        "POST",
+        f"{base}/audio/transcriptions",
+        {"sessionId": "session_1", "url": "ws://127.0.0.1/live", "token": "token"},
+    )
+    fake.add_json(
+        "DELETE",
+        f"{base}/audio/transcriptions/consumer-1",
+        {"success": True},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/audio/file-transcriptions",
+        {"success": True, "text": "hola"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/audio/file-transcription-jobs",
+        {"jobId": "file_job_1", "status": "queued"},
+    )
+    fake.add_json(
+        "GET",
+        f"{base}/audio/file-transcription-jobs/file_job_1",
+        {"jobId": "file_job_1", "status": "completed"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/audio/file-transcription-jobs/file_job_1/cancel",
+        {"jobId": "file_job_1", "status": "canceled"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/audio/synthesis",
+        {"success": True, "audioDataBase64": "UklGRg==", "mimeType": "audio/wav"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/audio/say",
+        {"success": True, "playbackId": "playback_1", "status": "queued"},
+    )
+    fake.add_json(
+        "GET",
+        f"{base}/audio/playbacks/playback_1",
+        {"playbackId": "playback_1", "status": "completed"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/audio/playbacks/playback_1/cancel",
+        {"playbackId": "playback_1", "status": "canceled"},
+    )
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+
+    assert forger_desktop.list_audio_devices()["inputDevices"][0]["id"] == "default"
+    assert forger_desktop.list_audio_input_devices() == {"inputDevices": []}
+    assert forger_desktop.list_audio_output_devices() == {"outputDevices": []}
+    assert forger_desktop.start_audio_transcription_session(
+        device_id="default",
+        task="translate",
+        language="es",
+    )["sessionId"] == "session_1"
+    assert forger_desktop.stop_audio_transcription_session("consumer-1") == {"success": True}
+    assert forger_desktop.transcribe_audio_file(
+        path="/tmp/app/audio.wav",
+        task="transcribe",
+        language="es",
+        model="small",
+    ) == {"success": True, "text": "hola"}
+    assert forger_desktop.start_audio_file_transcription_job(
+        path="/tmp/app/audio.wav",
+        task="transcribe",
+        language="es",
+        model="large-v3",
+    )["jobId"] == "file_job_1"
+    assert forger_desktop.get_audio_file_transcription_job("file_job_1")["status"] == "completed"
+    assert forger_desktop.cancel_audio_file_transcription_job("file_job_1")["status"] == "canceled"
+    assert forger_desktop.synthesize_speech(
+        text="hola",
+        model="kokoro",
+        voice="ef_dora",
+        speed=1.1,
+        format="wav",
+    )["mimeType"] == "audio/wav"
+    assert forger_desktop.say_text(
+        text="hola",
+        model="kokoro",
+        voice="ef_dora",
+        output_device_id="speaker",
+        speed=0.9,
+    )["playbackId"] == "playback_1"
+    assert forger_desktop.get_audio_playback("playback_1")["status"] == "completed"
+    assert forger_desktop.cancel_audio_playback("playback_1")["status"] == "canceled"
+
+    for record in fake.requests:
+        assert_signed_desktop_request(
+            record,
+            app_id=desktop_env["app_id"],
+            secret=desktop_env["secret"],
+        )
+    assert fake.requests[3].path == f"{base}/audio/transcriptions"
+    assert fake.requests[3].body == b'{"deviceId":"default","task":"translate","language":"es"}'
+    assert fake.requests[4].path == f"{base}/audio/transcriptions/consumer-1"
+    assert fake.requests[4].method == "DELETE"
+    assert fake.requests[4].body == b""
+    assert fake.requests[5].path == f"{base}/audio/file-transcriptions"
+    assert fake.requests[5].body == (
+        b'{"path":"/tmp/app/audio.wav","task":"transcribe","language":"es","model":"small"}'
+    )
+    assert fake.requests[6].path == f"{base}/audio/file-transcription-jobs"
+    assert fake.requests[6].body == (
+        b'{"path":"/tmp/app/audio.wav","task":"transcribe","language":"es","model":"large-v3"}'
+    )
+    assert fake.requests[7].path == f"{base}/audio/file-transcription-jobs/file_job_1"
+    assert fake.requests[7].method == "GET"
+    assert fake.requests[8].path == f"{base}/audio/file-transcription-jobs/file_job_1/cancel"
+    assert fake.requests[8].method == "POST"
+    assert fake.requests[9].body == (
+        b'{"text":"hola","model":"kokoro","voice":"ef_dora","speed":1.1,"format":"wav"}'
+    )
+    assert fake.requests[10].body == (
+        b'{"text":"hola","model":"kokoro","voice":"ef_dora","outputDeviceId":"speaker",'
+        b'"speed":0.9}'
+    )
+
+
+def test_audio_runtime_helpers_strip_optional_none(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json("POST", f"{base}/audio/transcriptions", {"sessionId": "session_1"})
+    fake.add_json("POST", f"{base}/audio/file-transcriptions", {"success": True})
+    fake.add_json("POST", f"{base}/audio/file-transcription-jobs", {"jobId": "job_1"})
+    fake.add_json("POST", f"{base}/audio/synthesis", {"success": True})
+    fake.add_json("POST", f"{base}/audio/say", {"success": True})
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+
+    forger_desktop.start_audio_transcription_session()
+    forger_desktop.transcribe_audio_file(path="/tmp/audio.wav")
+    forger_desktop.start_audio_file_transcription_job(path="/tmp/audio.wav")
+    forger_desktop.synthesize_speech(text="hola", model="kokoro", voice="ef_dora")
+    forger_desktop.say_text(text="hola", model="kokoro", voice="ef_dora")
+
+    assert fake.requests[0].body == b"{}"
+    assert fake.requests[1].body == b'{"path":"/tmp/audio.wav"}'
+    assert fake.requests[2].body == b'{"path":"/tmp/audio.wav"}'
+    assert fake.requests[3].body == b'{"text":"hola","model":"kokoro","voice":"ef_dora"}'
+    assert fake.requests[4].body == b'{"text":"hola","model":"kokoro","voice":"ef_dora"}'
+
+
 def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> None:
     fake = FakeDesktopRuntime()
     base = f"/v1/apps/{desktop_env['app_id']}"

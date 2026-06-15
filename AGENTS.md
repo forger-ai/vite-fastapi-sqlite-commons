@@ -22,6 +22,8 @@ Belongs in commons:
 - shared health check endpoint;
 - shared CORS helper;
 - shared Desktop runtime HTTP and event helpers;
+- shared Desktop audio bridge helpers;
+- shared backend websocket proxy helper for live transcript sessions;
 - shared FastAPI websocket channel hub;
 - shared frontend HTTP client;
 - base Docker Compose definitions extended by apps.
@@ -47,6 +49,7 @@ backend/
   health.py         GET /health router with database validation
   cors.py           CORS_ORIGINS reader from environment
   forger_desktop.py Signed HTTP client for the Forger Desktop runtime bridge
+  audio_runtime.py  Helpers for live audio transcript WebSocket proxying
   desktop_events.py Signed websocket client for Desktop agent events
   realtime.py       Generic FastAPI channel hub and `/api/realtime/ws` router
 
@@ -91,7 +94,13 @@ Apps must import their models before calling `init_db()`. The stack convention u
 - signed HTTP requests to the local Forger Desktop runtime bridge;
 - helpers for starting manifest agent threads, resuming manifest agent threads, steering active runs, inspecting threads/runs, canceling runs, and waiting for terminal run status;
 - helpers for checking assistant task status, starting manifest prompt-template tasks, inspecting tasks, canceling tasks, and waiting for terminal task status;
+- helpers for listing audio devices, creating and closing live transcription sessions, transcribing saved audio files, synthesizing speech bytes, starting ephemeral playback, checking playback status, and canceling playback;
 - the `FORGER_DESKTOP_RUNTIME_URL`, `FORGER_DESKTOP_RUNTIME_APP_ID`, and `FORGER_DESKTOP_RUNTIME_SECRET` environment contract.
+
+`backend/audio_runtime.py` defines:
+
+- a helper for building the live transcription WebSocket URL from a Desktop session descriptor;
+- a FastAPI-compatible proxy helper for apps that want their backend to bridge browser audio to Desktop speech-to-text without exposing Desktop session details directly to frontend code.
 
 `backend/desktop_events.py` defines:
 
@@ -113,12 +122,14 @@ Apps must import their models before calling `init_db()`. The stack convention u
 - local fallback to `http://localhost:8000`;
 - `ApiError` class;
 - generic `request<T>()` helper;
+- `apiWebSocketUrl()` for building backend WebSocket URLs while preserving runtime proxy prefixes such as `/__forger_api`;
 - HTTP helpers `get`, `post`, `patch`, `put`, and `del`;
 - default JSON handling;
 - `FormData` support;
 - network and HTTP error handling.
 
 Apps in the stack must use this shared client for base HTTP calls. If an app needs domain functions, it must create local wrappers in its own `frontend/src/api/`.
+Apps must not construct backend WebSocket URLs by replacing `URL.pathname` on `API_BASE_URL`, because installed apps receive prefixed runtime URLs.
 
 `frontend/query.ts` defines:
 

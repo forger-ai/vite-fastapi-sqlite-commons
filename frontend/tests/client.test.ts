@@ -182,6 +182,23 @@ describe("commons frontend client", () => {
     expect(lastFetchRequest(customFetchMock).url).toBe("http://api.test/health");
   });
 
+  it("builds websocket API URLs while preserving runtime proxy prefixes", async () => {
+    const localClient = await importClient("http://localhost:8000");
+    expect(localClient.apiWebSocketUrl("/api/realtime/ws")).toBe("ws://localhost:8000/api/realtime/ws");
+
+    const installedClient = await importClient("http://127.0.0.1:56075/__forger_api");
+    expect(installedClient.apiWebSocketUrl("/api/voice/live-transcripts/ws", {
+      language: "es",
+      deviceId: "Built In Microphone",
+      empty: null,
+    })).toBe(
+      "ws://127.0.0.1:56075/__forger_api/api/voice/live-transcripts/ws?language=es&deviceId=Built+In+Microphone",
+    );
+
+    const secureClient = await importClient("https://api.test/base///");
+    expect(secureClient.apiWebSocketUrl("api/realtime/ws")).toBe("wss://api.test/base/api/realtime/ws");
+  });
+
   it("passes abort signals through to fetch", async () => {
     const fetchMock: FetchMock = createFetchMock();
     const { get } = await importClient("http://api.test");
