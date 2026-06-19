@@ -55,6 +55,31 @@ def list_audio_output_devices() -> dict[str, Any]:
     return _request("GET", "/audio/output-devices", None)
 
 
+def request_folder_grant(
+    *,
+    grant_token: str,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        "/folder-grants/request",
+        {
+            "grantToken": grant_token,
+        },
+    )
+
+
+def list_folder_grants() -> dict[str, Any]:
+    return _request("GET", "/folder-grants", None)
+
+
+def revoke_folder_grant(grant_id: str) -> dict[str, Any] | None:
+    return _request(
+        "DELETE",
+        f"/folder-grants/{quote(grant_id, safe='')}",
+        None,
+    )
+
+
 def start_audio_transcription_session(
     *,
     device_id: str | None = None,
@@ -231,6 +256,7 @@ def start_manifest_agent_thread(
     runtime: dict[str, Any] | None = None,
     metadata: dict[str, Any] | None = None,
     workspace_path: str | None = None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _request(
         "POST",
@@ -241,6 +267,7 @@ def start_manifest_agent_thread(
             "runtime": runtime or None,
             "metadata": metadata or None,
             "workspacePath": workspace_path or None,
+            "workspace": workspace or None,
         },
     )
 
@@ -251,6 +278,7 @@ def resume_manifest_agent_thread(
     variables: dict[str, Any] | None = None,
     runtime: dict[str, Any] | None = None,
     workspace_path: str | None = None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _request(
         "POST",
@@ -259,6 +287,7 @@ def resume_manifest_agent_thread(
             "variables": variables or None,
             "runtime": runtime or None,
             "workspacePath": workspace_path or None,
+            "workspace": workspace or None,
         },
     )
 
@@ -270,6 +299,7 @@ def steer_manifest_agent_run(
     variables: dict[str, Any] | None = None,
     runtime: dict[str, Any] | None = None,
     workspace_path: str | None = None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _request(
         "POST",
@@ -278,6 +308,7 @@ def steer_manifest_agent_run(
             "variables": variables or None,
             "runtime": runtime or None,
             "workspacePath": workspace_path or None,
+            "workspace": workspace or None,
         },
     )
 
@@ -290,6 +321,7 @@ def create_agent_thread(
     runtime: dict[str, Any] | None = None,
     metadata: dict[str, Any] | None = None,
     workspace_path: str | None = None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     thread = start_manifest_agent_thread(
         agent_id=manifest_agent_id,
@@ -298,6 +330,7 @@ def create_agent_thread(
         runtime=runtime,
         metadata=metadata,
         workspace_path=workspace_path,
+        workspace=workspace,
     )
     return _with_legacy_thread_aliases(thread)
 
@@ -309,6 +342,7 @@ def start_agent_run(
     context: str | None = None,
     runtime: dict[str, Any] | None = None,
     workspace_path: str | None = None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     run = resume_manifest_agent_thread(
         desktop_thread_id=desktop_thread_id,
@@ -319,6 +353,7 @@ def start_agent_run(
         },
         runtime=runtime,
         workspace_path=workspace_path,
+        workspace=workspace,
     )
     return _with_legacy_run_aliases(run)
 

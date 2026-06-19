@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from io import BytesIO
 from urllib.error import HTTPError, URLError
 
@@ -247,6 +248,54 @@ def test_audio_runtime_helpers_strip_optional_none(monkeypatch, desktop_env) -> 
     assert fake.requests[4].body == b'{"text":"hola","model":"kokoro","voice":"ef_dora"}'
 
 
+def test_folder_grant_helpers_use_signed_grant_routes(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json(
+        "POST",
+        f"{base}/folder-grants/request",
+        {
+            "grantId": "grant_1",
+            "path": "/Users/me/Documents",
+            "access": "readWrite",
+        },
+    )
+    fake.add_json(
+        "GET",
+        f"{base}/folder-grants",
+        {"grants": [{"grantId": "grant_1"}]},
+    )
+    fake.add_json(
+        "DELETE",
+        f"{base}/folder-grants/grant%2F1",
+        {"revoked": True},
+    )
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+
+    assert forger_desktop.request_folder_grant(
+        grant_token="signed-folder-token",
+    )["grantId"] == "grant_1"
+    assert forger_desktop.list_folder_grants() == {"grants": [{"grantId": "grant_1"}]}
+    assert forger_desktop.revoke_folder_grant("grant/1") == {"revoked": True}
+
+    assert fake.requests[0].method == "POST"
+    assert fake.requests[0].path == f"{base}/folder-grants/request"
+    assert json.loads(fake.requests[0].body) == {
+        "grantToken": "signed-folder-token",
+    }
+    assert fake.requests[1].method == "GET"
+    assert fake.requests[1].body == b""
+    assert fake.requests[2].method == "DELETE"
+    assert fake.requests[2].path == f"{base}/folder-grants/grant%2F1"
+    assert fake.requests[2].body == b""
+    for record in fake.requests:
+        assert_signed_desktop_request(
+            record,
+            app_id=desktop_env["app_id"],
+            secret=desktop_env["secret"],
+        )
+
+
 def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> None:
     fake = FakeDesktopRuntime()
     base = f"/v1/apps/{desktop_env['app_id']}"
@@ -285,6 +334,10 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
         agent_id="agent",
         title="Thread",
         variables={"message": "Start"},
+        workspace={
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
     )["desktop_thread_id"] == "thread_1"
     assert forger_desktop.create_agent_thread(
         title="Thread",
@@ -298,6 +351,10 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
         runtime={"mode": "test"},
         metadata={"source": "pytest"},
         workspace_path="/tmp/app",
+        workspace={
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
     )["id"] == "thread_1"
     assert forger_desktop.get_agent_thread("thread_1") == {"id": "thread_1"}
     assert forger_desktop.resume_manifest_agent_thread(
@@ -314,11 +371,19 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
         context="Context",
         runtime={"mode": "test"},
         workspace_path="/tmp/app",
+        workspace={
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
     )["id"] == "run_1"
     assert forger_desktop.steer_manifest_agent_run(
         desktop_thread_id="thread_1",
         desktop_run_id="run_1",
         variables={"instruction": "Adjust"},
+        workspace={
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
     ) == {"desktop_run_id": "run_2", "status": "running"}
     assert forger_desktop.get_agent_run("thread_1", "run_1") == {
         "status": "completed"
@@ -332,6 +397,45 @@ def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> N
         app_id=desktop_env["app_id"],
         secret=desktop_env["secret"],
     )
+    assert json.loads(fake.requests[0].body) == {
+        "title": "Thread",
+        "variables": {"message": "Start"},
+        "workspace": {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
+    }
+    assert json.loads(fake.requests[2].body) == {
+        "title": "Thread",
+        "variables": {"message": "Start"},
+        "runtime": {"mode": "test"},
+        "metadata": {"source": "pytest"},
+        "workspacePath": "/tmp/app",
+        "workspace": {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
+    }
+    assert json.loads(fake.requests[6].body) == {
+        "variables": {
+            "message": "Hello",
+            "context": "Context",
+            "session_state": "Context",
+        },
+        "runtime": {"mode": "test"},
+        "workspacePath": "/tmp/app",
+        "workspace": {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
+    }
+    assert json.loads(fake.requests[7].body) == {
+        "variables": {"instruction": "Adjust"},
+        "workspace": {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
+    }
 
 
 def test_legacy_aliases_preserve_existing_values() -> None:
