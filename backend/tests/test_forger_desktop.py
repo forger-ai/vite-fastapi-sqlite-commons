@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
 from io import BytesIO
 from urllib.error import HTTPError, URLError
@@ -73,6 +76,11 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
         arguments={"name": "value"},
         variables={"context": "demo"},
         attachments=[{"id": "att_1"}],
+        workspace_path="/tmp/app",
+        workspace={
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
     ) == {"runId": "task_1"}
     assert forger_desktop.get_agent_task("task_1") == {"status": "completed"}
     assert forger_desktop.cancel_agent_task("task_1") == {"canceled": True}
@@ -89,6 +97,18 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
         app_id=desktop_env["app_id"],
         secret=desktop_env["secret"],
     )
+    assert json.loads(fake.requests[3].body) == {
+        "templateId": "template",
+        "locale": "en",
+        "arguments": {"name": "value"},
+        "variables": {"context": "demo"},
+        "attachments": [{"id": "att_1"}],
+        "workspacePath": "/tmp/app",
+        "workspace": {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        },
+    }
 
 
 def test_audio_runtime_requests_are_signed_and_use_exact_routes(monkeypatch, desktop_env) -> None:
@@ -294,6 +314,82 @@ def test_folder_grant_helpers_use_signed_grant_routes(monkeypatch, desktop_env) 
             app_id=desktop_env["app_id"],
             secret=desktop_env["secret"],
         )
+
+
+def test_create_folder_grant_token_matches_desktop_contract(monkeypatch, desktop_env) -> None:
+    monkeypatch.setenv("FORGER_APP_GRANT_SECRET", "grant.secret")
+    monkeypatch.setattr(forger_desktop.time, "time", lambda: 1_700_000_000)
+
+    token = forger_desktop.create_folder_grant_token(
+        path=" /Users/me/Project ",
+        expires_in_seconds=120,
+    )
+
+    payload, signature = token.split(".")
+    decoded_payload = json.loads(_base64url_decode(payload).decode("utf-8"))
+    assert decoded_payload == {
+        "appId": desktop_env["app_id"],
+        "path": "/Users/me/Project",
+        "exp": 1_700_000_120,
+    }
+    expected_signature = _base64url_encode(
+        hmac.new(
+            b"grant.secret",
+            payload.encode("utf-8"),
+            hashlib.sha256,
+        ).digest(),
+    )
+    assert signature == expected_signature
+
+
+def test_request_folder_grant_for_path_signs_and_requests_grant(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json(
+        "POST",
+        f"{base}/folder-grants/request",
+        {"grantId": "grant_1"},
+    )
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+    monkeypatch.setenv("FORGER_APP_GRANT_SECRET", "grant.secret")
+    monkeypatch.setattr(forger_desktop.time, "time", lambda: 1_700_000_000)
+
+    assert forger_desktop.request_folder_grant_for_path(
+        path="/Users/me/Project",
+        expires_in_seconds=60,
+    ) == {"grantId": "grant_1"}
+
+    body = json.loads(fake.requests[0].body)
+    payload, signature = body["grantToken"].split(".")
+    assert json.loads(_base64url_decode(payload).decode("utf-8")) == {
+        "appId": desktop_env["app_id"],
+        "path": "/Users/me/Project",
+        "exp": 1_700_000_060,
+    }
+    assert signature == _base64url_encode(
+        hmac.new(
+            b"grant.secret",
+            payload.encode("utf-8"),
+            hashlib.sha256,
+        ).digest(),
+    )
+    assert_signed_desktop_request(
+        fake.requests[0],
+        app_id=desktop_env["app_id"],
+        secret=desktop_env["secret"],
+    )
+
+
+def test_create_folder_grant_token_requires_app_id_secret_and_path(monkeypatch) -> None:
+    monkeypatch.delenv("FORGER_DESKTOP_RUNTIME_APP_ID", raising=False)
+    monkeypatch.delenv("FORGER_APP_GRANT_SECRET", raising=False)
+    with pytest.raises(forger_desktop.ForgerAppGrantUnavailable):
+        forger_desktop.create_folder_grant_token(path="/Users/me/Project")
+
+    monkeypatch.setenv("FORGER_DESKTOP_RUNTIME_APP_ID", "app.test")
+    monkeypatch.setenv("FORGER_APP_GRANT_SECRET", "grant.secret")
+    with pytest.raises(ValueError):
+        forger_desktop.create_folder_grant_token(path=" ")
 
 
 def test_agent_thread_and_run_requests_are_signed(monkeypatch, desktop_env) -> None:
@@ -575,3 +671,12 @@ def test_wait_for_run_times_out_with_run_id_when_no_run_is_seen(monkeypatch) -> 
             desktop_run_id="run_1",
             timeout_seconds=0,
         )
+
+
+def _base64url_decode(value: str) -> bytes:
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(f"{value}{padding}")
+
+
+def _base64url_encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")

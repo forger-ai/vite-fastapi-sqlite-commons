@@ -65,7 +65,13 @@ def test_enqueue_register_and_complete_task_job(monkeypatch, tmp_path) -> None:
                 },
             ]
         )
-        desktop.start_agent_task = lambda **_kwargs: next(states)
+        start_kwargs: list[dict] = []
+
+        def start_agent_task(**kwargs):
+            start_kwargs.append(kwargs)
+            return next(states)
+
+        desktop.start_agent_task = start_agent_task
         desktop.get_agent_task = lambda _run_id: next(states)
         monkeypatch.setattr(task_jobs.asyncio, "sleep", _noop_sleep)
         seen: list[tuple[str, str]] = []
@@ -83,6 +89,11 @@ def test_enqueue_register_and_complete_task_job(monkeypatch, tmp_path) -> None:
         queued = task_jobs.enqueue_desktop_task_job(
             template_id="coach",
             arguments={"game_id": {"type": "string", "value": "g1"}},
+            workspace_path="/tmp/app",
+            workspace={
+                "cwdGrantId": "workspace_1",
+                "additionalFolderGrantIds": ["workspace_2"],
+            },
             poll_interval_seconds=0.2,
         )
         ran = asyncio.run(jobs.run_due_jobs_once(registry))
@@ -94,6 +105,11 @@ def test_enqueue_register_and_complete_task_job(monkeypatch, tmp_path) -> None:
         assert result["messages"] == ["starting", "done"]
         assert result["resultText"] == "Finished"
         assert finished.progress_message == "done"
+        assert start_kwargs[0]["workspace_path"] == "/tmp/app"
+        assert start_kwargs[0]["workspace"] == {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        }
         assert seen == [("update", "running"), ("update", "completed"), ("success", "Finished")]
 
 

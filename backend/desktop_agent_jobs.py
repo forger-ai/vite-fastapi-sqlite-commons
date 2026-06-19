@@ -68,6 +68,7 @@ def enqueue_desktop_agent_start_job(
     runtime: JsonDict | None = None,
     metadata: JsonDict | None = None,
     workspace_path: str | None = None,
+    workspace: JsonDict | None = None,
     realtime_channel: str | None = None,
     poll_interval_seconds: float = 1.0,
     timeout_seconds: int = 600,
@@ -88,6 +89,7 @@ def enqueue_desktop_agent_start_job(
             "runtime": runtime or {},
             "metadata": metadata or {},
             "workspace_path": workspace_path,
+            "workspace": workspace or {},
             "realtime_channel": realtime_channel,
             "poll_interval_seconds": poll_interval_seconds,
             "timeout_seconds": timeout_seconds,
@@ -105,6 +107,7 @@ def enqueue_desktop_agent_resume_job(
     variables: JsonDict | None = None,
     runtime: JsonDict | None = None,
     workspace_path: str | None = None,
+    workspace: JsonDict | None = None,
     realtime_channel: str | None = None,
     poll_interval_seconds: float = 1.0,
     timeout_seconds: int = 600,
@@ -123,6 +126,7 @@ def enqueue_desktop_agent_resume_job(
             "variables": variables or {},
             "runtime": runtime or {},
             "workspace_path": workspace_path,
+            "workspace": workspace or {},
             "realtime_channel": realtime_channel,
             "poll_interval_seconds": poll_interval_seconds,
             "timeout_seconds": timeout_seconds,
@@ -143,6 +147,7 @@ async def run_desktop_agent_start_job(
     runtime: JsonDict | None = None,
     metadata: JsonDict | None = None,
     workspace_path: str | None = None,
+    workspace: JsonDict | None = None,
     realtime_channel: str | None = None,
     poll_interval_seconds: float = 1.0,
     timeout_seconds: int = 600,
@@ -154,6 +159,7 @@ async def run_desktop_agent_start_job(
         runtime=runtime or None,
         metadata=metadata or None,
         workspace_path=workspace_path,
+        workspace=workspace or None,
     )
     return await _poll_started_or_resumed_agent_job(
         ctx,
@@ -172,6 +178,7 @@ async def run_desktop_agent_resume_job(
     variables: JsonDict | None = None,
     runtime: JsonDict | None = None,
     workspace_path: str | None = None,
+    workspace: JsonDict | None = None,
     realtime_channel: str | None = None,
     poll_interval_seconds: float = 1.0,
     timeout_seconds: int = 600,
@@ -181,6 +188,7 @@ async def run_desktop_agent_resume_job(
         variables=variables or None,
         runtime=runtime or None,
         workspace_path=workspace_path,
+        workspace=workspace or None,
     )
     return await _poll_started_or_resumed_agent_job(
         ctx,

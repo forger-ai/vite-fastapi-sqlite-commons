@@ -12,7 +12,7 @@ backend/
   database.py       — SQLAlchemy session factory
   health.py         — /health endpoint
   cors.py           — CORS middleware setup
-  forger_desktop.py — Signed HTTP client for Desktop manifest agents, tasks, and audio APIs
+  forger_desktop.py — Signed HTTP client for Desktop manifest agents, tasks, audio APIs, and folder grants
   audio_runtime.py  — Live transcription WebSocket URL and proxy helpers
   desktop_events.py — Signed websocket client for Desktop agent events
   realtime.py       — Generic FastAPI channel hub and websocket router

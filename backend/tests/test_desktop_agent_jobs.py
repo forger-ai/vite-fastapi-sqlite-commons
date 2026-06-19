@@ -67,7 +67,13 @@ def test_start_and_resume_agent_jobs_complete(monkeypatch, tmp_path) -> None:
                 },
             ]
         )
-        desktop.start_manifest_agent_thread = lambda **_kwargs: next(start_states)
+        start_kwargs: list[dict] = []
+
+        def start_manifest_agent_thread(**kwargs):
+            start_kwargs.append(kwargs)
+            return next(start_states)
+
+        desktop.start_manifest_agent_thread = start_manifest_agent_thread
         desktop.get_agent_run = lambda *_args: next(start_states)
         monkeypatch.setattr(agent_jobs.asyncio, "sleep", _noop_sleep)
         seen: list[tuple[str, str]] = []
@@ -82,13 +88,25 @@ def test_start_and_resume_agent_jobs_complete(monkeypatch, tmp_path) -> None:
 
         registry = agent_jobs.register_desktop_agent_jobs()
         assert agent_jobs.register_desktop_agent_jobs(registry) is registry
-        queued = agent_jobs.enqueue_desktop_agent_start_job(agent_id="coach")
+        queued = agent_jobs.enqueue_desktop_agent_start_job(
+            agent_id="coach",
+            workspace_path="/tmp/app",
+            workspace={
+                "cwdGrantId": "workspace_1",
+                "additionalFolderGrantIds": ["workspace_2"],
+            },
+        )
         asyncio.run(jobs.run_due_jobs_once(registry))
         result = json.loads(jobs.get_job(queued.id).result_json)
 
         assert result["desktop_thread_id"] == "thread_1"
         assert result["desktop_run_id"] == "run_1"
         assert result["messages"] == ["start", "done"]
+        assert start_kwargs[0]["workspace_path"] == "/tmp/app"
+        assert start_kwargs[0]["workspace"] == {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        }
         assert seen == [("update", "running"), ("update", "completed"), ("success", "Result")]
 
         resume_states = iter(
@@ -97,11 +115,29 @@ def test_start_and_resume_agent_jobs_complete(monkeypatch, tmp_path) -> None:
                 {"desktop_run_id": "run_2", "status": "completed", "resultText": "OK"},
             ]
         )
-        desktop.resume_manifest_agent_thread = lambda **_kwargs: next(resume_states)
+        resume_kwargs: list[dict] = []
+
+        def resume_manifest_agent_thread(**kwargs):
+            resume_kwargs.append(kwargs)
+            return next(resume_states)
+
+        desktop.resume_manifest_agent_thread = resume_manifest_agent_thread
         desktop.get_agent_run = lambda *_args: next(resume_states)
-        queued_resume = agent_jobs.enqueue_desktop_agent_resume_job(desktop_thread_id="thread_1")
+        queued_resume = agent_jobs.enqueue_desktop_agent_resume_job(
+            desktop_thread_id="thread_1",
+            workspace_path="/tmp/app",
+            workspace={
+                "cwdGrantId": "workspace_1",
+                "additionalFolderGrantIds": ["workspace_2"],
+            },
+        )
         asyncio.run(jobs.run_due_jobs_once(registry))
         assert json.loads(jobs.get_job(queued_resume.id).result_json)["resultText"] == "OK"
+        assert resume_kwargs[0]["workspace_path"] == "/tmp/app"
+        assert resume_kwargs[0]["workspace"] == {
+            "cwdGrantId": "workspace_1",
+            "additionalFolderGrantIds": ["workspace_2"],
+        }
 
 
 def test_agent_job_failure_cancel_timeout_and_helpers(monkeypatch, tmp_path) -> None:

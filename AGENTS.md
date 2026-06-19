@@ -48,7 +48,7 @@ backend/
   database.py       SQLModel engine, init_db, and sessions
   health.py         GET /health router with database validation
   cors.py           CORS_ORIGINS reader from environment
-  forger_desktop.py Signed HTTP client for the Forger Desktop runtime bridge
+  forger_desktop.py Signed HTTP client for the Forger Desktop runtime bridge and folder-grant token helpers
   audio_runtime.py  Helpers for live audio transcript WebSocket proxying
   desktop_events.py Signed websocket client for Desktop agent events
   realtime.py       Generic FastAPI channel hub and `/api/realtime/ws` router
@@ -92,10 +92,12 @@ Apps must import their models before calling `init_db()`. The stack convention u
 `backend/forger_desktop.py` defines:
 
 - signed HTTP requests to the local Forger Desktop runtime bridge;
+- helpers for signing short-lived folder grant tokens from the backend with Desktop-injected `FORGER_APP_GRANT_SECRET`;
+- helpers for requesting, listing, and revoking Desktop folder grants;
 - helpers for starting manifest agent threads, resuming manifest agent threads, steering active runs, inspecting threads/runs, canceling runs, and waiting for terminal run status;
 - helpers for checking assistant task status, starting manifest prompt-template tasks, inspecting tasks, canceling tasks, and waiting for terminal task status;
 - helpers for listing audio devices, creating and closing live transcription sessions, transcribing saved audio files, synthesizing speech bytes, starting ephemeral playback, checking playback status, and canceling playback;
-- the `FORGER_DESKTOP_RUNTIME_URL`, `FORGER_DESKTOP_RUNTIME_APP_ID`, and `FORGER_DESKTOP_RUNTIME_SECRET` environment contract.
+- the `FORGER_DESKTOP_RUNTIME_URL`, `FORGER_DESKTOP_RUNTIME_APP_ID`, `FORGER_DESKTOP_RUNTIME_SECRET`, and `FORGER_APP_GRANT_SECRET` environment contract.
 
 `backend/audio_runtime.py` defines:
 

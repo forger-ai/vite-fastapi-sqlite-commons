@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -24,6 +25,10 @@ class ForgerDesktopRuntimeUnavailable(ForgerDesktopRuntimeError):
     pass
 
 
+class ForgerAppGrantUnavailable(ForgerDesktopRuntimeUnavailable):
+    pass
+
+
 @dataclass(frozen=True)
 class ForgerDesktopRuntimeConfig:
     url: str
@@ -41,6 +46,51 @@ def get_agent_task_status() -> dict[str, Any]:
 
 def get_app_context() -> dict[str, Any]:
     return _request("GET", "/context", None)
+
+
+def create_folder_grant_token(
+    *,
+    path: str,
+    expires_in_seconds: int = 300,
+) -> str:
+    app_id = (os.environ.get("FORGER_DESKTOP_RUNTIME_APP_ID") or "").strip()
+    secret = (os.environ.get("FORGER_APP_GRANT_SECRET") or "").strip()
+    folder_path = path.strip()
+    if not app_id or not secret:
+        raise ForgerAppGrantUnavailable(
+            "Forger app folder grant signing is not available",
+        )
+    if not folder_path:
+        raise ValueError("folder grant path is required")
+
+    payload = _base64url_json(
+        {
+            "appId": app_id,
+            "path": folder_path,
+            "exp": int(time.time()) + max(1, int(expires_in_seconds)),
+        },
+    )
+    signature = _base64url_bytes(
+        hmac.new(
+            secret.encode("utf-8"),
+            payload.encode("utf-8"),
+            hashlib.sha256,
+        ).digest(),
+    )
+    return f"{payload}.{signature}"
+
+
+def request_folder_grant_for_path(
+    *,
+    path: str,
+    expires_in_seconds: int = 300,
+) -> dict[str, Any]:
+    return request_folder_grant(
+        grant_token=create_folder_grant_token(
+            path=path,
+            expires_in_seconds=expires_in_seconds,
+        ),
+    )
 
 
 def list_audio_devices() -> dict[str, Any]:
@@ -208,6 +258,8 @@ def start_agent_task(
     arguments: dict[str, Any] | None = None,
     variables: dict[str, Any] | None = None,
     attachments: list[dict[str, Any]] | None = None,
+    workspace_path: str | None = None,
+    workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _request(
         "POST",
@@ -218,6 +270,8 @@ def start_agent_task(
             "arguments": arguments or None,
             "variables": variables or None,
             "attachments": attachments or None,
+            "workspacePath": workspace_path or None,
+            "workspace": workspace or None,
         },
     )
 
@@ -473,6 +527,16 @@ def normalize_runtime_url(raw_url: str) -> str:
 
 def _strip_none(value: dict[str, Any]) -> dict[str, Any]:
     return {key: item for key, item in value.items() if item is not None}
+
+
+def _base64url_json(value: dict[str, Any]) -> str:
+    return _base64url_bytes(
+        json.dumps(value, separators=(",", ":")).encode("utf-8"),
+    )
+
+
+def _base64url_bytes(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
 
 
 def _with_legacy_thread_aliases(thread: dict[str, Any]) -> dict[str, Any]:
