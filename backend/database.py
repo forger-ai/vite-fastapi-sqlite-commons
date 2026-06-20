@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy.event import listens_for
 from sqlmodel import Session, SQLModel, create_engine
 
-_DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "app.sqlite"
+_DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "forger-app.sqlite"
 
 
 def _resolve_database_url() -> str:

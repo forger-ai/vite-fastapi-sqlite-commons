@@ -31,7 +31,7 @@ def temp_sqlite_database(
     monkeypatch,
     tmp_path: Path,
     *,
-    filename: str = "app.sqlite",
+    filename: str = "forger-app.sqlite",
 ) -> Iterator[tuple[ModuleType, Path]]:
     db_path = tmp_path / filename
     db_path.parent.mkdir(parents=True, exist_ok=True)

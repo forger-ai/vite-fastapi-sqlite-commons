@@ -13,7 +13,7 @@ def test_database_uses_default_sqlite_url_when_env_is_blank(monkeypatch) -> None
     database = reload_module("database")
 
     assert database.DATABASE_URL.startswith("sqlite:///")
-    assert database.DATABASE_URL.endswith("/data/app.sqlite")
+    assert database.DATABASE_URL.endswith("/data/forger-app.sqlite")
 
 
 def test_database_uses_non_sqlite_engine_without_sqlite_connect_args(
@@ -52,7 +52,7 @@ def test_temp_sqlite_database_initializes_parent_and_enables_foreign_keys(
     monkeypatch,
     tmp_path,
 ) -> None:
-    nested_db = tmp_path / "nested" / "app.sqlite"
+    nested_db = tmp_path / "nested" / "forger-app.sqlite"
 
     with temp_sqlite_database(
         monkeypatch,
