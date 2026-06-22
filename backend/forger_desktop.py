@@ -130,6 +130,183 @@ def revoke_folder_grant(grant_id: str) -> dict[str, Any] | None:
     )
 
 
+def list_official_tools() -> dict[str, Any]:
+    return _request("GET", "/tools", None)
+
+
+def get_official_tool(tool_id: str) -> dict[str, Any]:
+    return _request("GET", f"/tools/{quote(tool_id, safe='')}", None)
+
+
+def call_official_tool(
+    tool_id: str,
+    action_id: str,
+    input: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        f"/tools/{quote(tool_id, safe='')}/actions/{quote(action_id, safe='')}",
+        {"input": input or {}},
+    )
+
+
+CHROME_EXTENSION_TOOL_ID = "forger_chrome_extension"
+
+
+def _chrome_action(action: str) -> str:
+    return f"{CHROME_EXTENSION_TOOL_ID}.{action}"
+
+
+def chrome_connection_status() -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("connection.status"),
+    )
+
+
+def chrome_open_dedicated_tab(url: str | None = None) -> dict[str, Any]:
+    input: dict[str, Any] = {}
+    if url:
+        input["url"] = url
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("open_dedicated_tab"),
+        input,
+    )
+
+
+def chrome_get_current_url(session_id: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("get_current_url"),
+        {"sessionId": session_id},
+    )
+
+
+def chrome_navigate(session_id: str, url: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("navigate"),
+        {"sessionId": session_id, "url": url},
+    )
+
+
+def chrome_get_html(session_id: str, selector: str | None = None) -> dict[str, Any]:
+    input: dict[str, Any] = {"sessionId": session_id}
+    if selector:
+        input["selector"] = selector
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("get_html"),
+        input,
+    )
+
+
+def chrome_click(session_id: str, selector: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("click"),
+        {"sessionId": session_id, "selector": selector},
+    )
+
+
+def chrome_focus(session_id: str, selector: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("focus"),
+        {"sessionId": session_id, "selector": selector},
+    )
+
+
+def chrome_hover(session_id: str, selector: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("hover"),
+        {"sessionId": session_id, "selector": selector},
+    )
+
+
+def chrome_input_text(session_id: str, selector: str, text: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("input_text"),
+        {"sessionId": session_id, "selector": selector, "text": text},
+    )
+
+
+def chrome_submit_form(
+    session_id: str,
+    selector: str,
+    submit_selector: str | None = None,
+) -> dict[str, Any]:
+    input: dict[str, Any] = {
+        "sessionId": session_id,
+        "selector": selector,
+    }
+    if submit_selector:
+        input["submitSelector"] = submit_selector
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("submit_form"),
+        input,
+    )
+
+
+def chrome_get_styles(
+    session_id: str,
+    selector: str,
+    properties: list[str] | None = None,
+) -> dict[str, Any]:
+    input: dict[str, Any] = {
+        "sessionId": session_id,
+        "selector": selector,
+    }
+    if properties:
+        input["properties"] = properties
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("get_styles"),
+        input,
+    )
+
+
+def chrome_set_styles(
+    session_id: str,
+    selector: str,
+    styles: dict[str, str],
+) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("set_styles"),
+        {
+            "sessionId": session_id,
+            "selector": selector,
+            "styles": styles,
+        },
+    )
+
+
+def chrome_highlight_element(
+    session_id: str,
+    selector: str,
+    styles: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    highlight_styles = styles or {
+        "outline": "2px solid #dd782b",
+        "outline-offset": "3px",
+        "box-shadow": "0 0 0 4px rgba(221, 120, 43, 0.24)",
+    }
+    return chrome_set_styles(session_id, selector, highlight_styles)
+
+
+def chrome_close_session(session_id: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("close_session"),
+        {"sessionId": session_id},
+    )
+
+
 def start_audio_transcription_session(
     *,
     device_id: str | None = None,
@@ -258,6 +435,7 @@ def start_agent_task(
     arguments: dict[str, Any] | None = None,
     variables: dict[str, Any] | None = None,
     attachments: list[dict[str, Any]] | None = None,
+    runtime: dict[str, Any] | None = None,
     workspace_path: str | None = None,
     workspace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -270,6 +448,7 @@ def start_agent_task(
             "arguments": arguments or None,
             "variables": variables or None,
             "attachments": attachments or None,
+            "runtime": runtime or None,
             "workspacePath": workspace_path or None,
             "workspace": workspace or None,
         },

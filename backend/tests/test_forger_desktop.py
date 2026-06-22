@@ -82,6 +82,10 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
             "additionalFolderGrantIds": ["workspace_2"],
         },
     ) == {"runId": "task_1"}
+    assert forger_desktop.start_agent_task(
+        template_id="template",
+        runtime={"provider": "codex", "model": "gpt-5.4", "effort": "medium"},
+    ) == {"runId": "task_1"}
     assert forger_desktop.get_agent_task("task_1") == {"status": "completed"}
     assert forger_desktop.cancel_agent_task("task_1") == {"canceled": True}
 
@@ -108,6 +112,10 @@ def test_agent_task_requests_are_signed_and_strip_none(monkeypatch, desktop_env)
             "cwdGrantId": "workspace_1",
             "additionalFolderGrantIds": ["workspace_2"],
         },
+    }
+    assert json.loads(fake.requests[4].body) == {
+        "templateId": "template",
+        "runtime": {"provider": "codex", "model": "gpt-5.4", "effort": "medium"},
     }
 
 
@@ -308,6 +316,168 @@ def test_folder_grant_helpers_use_signed_grant_routes(monkeypatch, desktop_env) 
     assert fake.requests[2].method == "DELETE"
     assert fake.requests[2].path == f"{base}/folder-grants/grant%2F1"
     assert fake.requests[2].body == b""
+    for record in fake.requests:
+        assert_signed_desktop_request(
+            record,
+            app_id=desktop_env["app_id"],
+            secret=desktop_env["secret"],
+        )
+
+
+def test_official_tool_helpers_use_signed_tool_routes(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json("GET", f"{base}/tools", {"tools": [{"id": "forger_chrome_extension"}]})
+    fake.add_json(
+        "GET",
+        f"{base}/tools/forger_chrome_extension",
+        {"id": "forger_chrome_extension"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/tools/forger_chrome_extension/actions/forger_chrome_extension.get_styles",
+        {"success": True, "data": {"styles": {}}},
+    )
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+
+    assert forger_desktop.list_official_tools()["tools"][0]["id"] == "forger_chrome_extension"
+    assert forger_desktop.get_official_tool("forger_chrome_extension")["id"] == "forger_chrome_extension"
+    assert forger_desktop.call_official_tool(
+        "forger_chrome_extension",
+        "forger_chrome_extension.get_styles",
+        {"sessionId": "session_1", "selector": "#total"},
+    )["success"] is True
+
+    assert fake.requests[0].method == "GET"
+    assert fake.requests[0].path == f"{base}/tools"
+    assert fake.requests[1].path == f"{base}/tools/forger_chrome_extension"
+    assert fake.requests[2].method == "POST"
+    assert fake.requests[2].path == (
+        f"{base}/tools/forger_chrome_extension/actions/"
+        "forger_chrome_extension.get_styles"
+    )
+    assert json.loads(fake.requests[2].body) == {
+        "input": {
+            "sessionId": "session_1",
+            "selector": "#total",
+        },
+    }
+    for record in fake.requests:
+        assert_signed_desktop_request(
+            record,
+            app_id=desktop_env["app_id"],
+            secret=desktop_env["secret"],
+        )
+
+
+def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    action_ids = [
+        "connection.status",
+        "open_dedicated_tab",
+        "get_current_url",
+        "navigate",
+        "get_html",
+        "click",
+        "focus",
+        "hover",
+        "input_text",
+        "submit_form",
+        "get_styles",
+        "set_styles",
+        "set_styles",
+        "close_session",
+    ]
+    for action in action_ids:
+        fake.add_json(
+            "POST",
+            f"{base}/tools/forger_chrome_extension/actions/forger_chrome_extension.{action}",
+            {"success": True, "action": action},
+        )
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+
+    assert forger_desktop.chrome_connection_status()["success"] is True
+    assert forger_desktop.chrome_open_dedicated_tab()["success"] is True
+    assert forger_desktop.chrome_get_current_url("session_1")["success"] is True
+    assert forger_desktop.chrome_navigate("session_1", "https://example.com")["success"] is True
+    assert forger_desktop.chrome_get_html("session_1")["success"] is True
+    assert forger_desktop.chrome_click("session_1", "#save")["success"] is True
+    assert forger_desktop.chrome_focus("session_1", "#name")["success"] is True
+    assert forger_desktop.chrome_hover("session_1", "#menu")["success"] is True
+    assert forger_desktop.chrome_input_text("session_1", "#name", "Forger")["success"] is True
+    assert forger_desktop.chrome_submit_form(
+        "session_1",
+        "form",
+        submit_selector="button.primary",
+    )["success"] is True
+    assert forger_desktop.chrome_get_styles(
+        "session_1",
+        "#total",
+        properties=["outline", "box-shadow"],
+    )["success"] is True
+    assert forger_desktop.chrome_set_styles(
+        "session_1",
+        "#total",
+        {"outline": "2px solid #dd782b"},
+    )["success"] is True
+    assert forger_desktop.chrome_highlight_element("session_1", "#total")["success"] is True
+    assert forger_desktop.chrome_close_session("session_1")["success"] is True
+
+    assert json.loads(fake.requests[0].body) == {"input": {}}
+    assert json.loads(fake.requests[1].body) == {"input": {}}
+    assert json.loads(fake.requests[2].body) == {"input": {"sessionId": "session_1"}}
+    assert json.loads(fake.requests[3].body) == {
+        "input": {"sessionId": "session_1", "url": "https://example.com"},
+    }
+    assert json.loads(fake.requests[4].body) == {"input": {"sessionId": "session_1"}}
+    assert json.loads(fake.requests[8].body) == {
+        "input": {"sessionId": "session_1", "selector": "#name", "text": "Forger"},
+    }
+    assert json.loads(fake.requests[9].body) == {
+        "input": {
+            "sessionId": "session_1",
+            "selector": "form",
+            "submitSelector": "button.primary",
+        },
+    }
+    assert json.loads(fake.requests[10].body) == {
+        "input": {
+            "sessionId": "session_1",
+            "selector": "#total",
+            "properties": ["outline", "box-shadow"],
+        },
+    }
+    assert json.loads(fake.requests[11].body) == {
+        "input": {
+            "sessionId": "session_1",
+            "selector": "#total",
+            "styles": {"outline": "2px solid #dd782b"},
+        },
+    }
+    assert json.loads(fake.requests[12].body)["input"]["styles"] == {
+        "outline": "2px solid #dd782b",
+        "outline-offset": "3px",
+        "box-shadow": "0 0 0 4px rgba(221, 120, 43, 0.24)",
+    }
+    assert json.loads(fake.requests[13].body) == {"input": {"sessionId": "session_1"}}
+
+    assert forger_desktop.chrome_open_dedicated_tab("https://example.com")["success"] is True
+    assert forger_desktop.chrome_get_html("session_1", selector="#main")["success"] is True
+    assert forger_desktop.chrome_submit_form("session_1", "form")["success"] is True
+    assert forger_desktop.chrome_get_styles("session_1", "#total")["success"] is True
+    assert json.loads(fake.requests[14].body) == {
+        "input": {"url": "https://example.com"},
+    }
+    assert json.loads(fake.requests[15].body) == {
+        "input": {"sessionId": "session_1", "selector": "#main"},
+    }
+    assert json.loads(fake.requests[16].body) == {
+        "input": {"sessionId": "session_1", "selector": "form"},
+    }
+    assert json.loads(fake.requests[17].body) == {
+        "input": {"sessionId": "session_1", "selector": "#total"},
+    }
     for record in fake.requests:
         assert_signed_desktop_request(
             record,
