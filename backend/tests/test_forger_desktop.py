@@ -341,7 +341,10 @@ def test_official_tool_helpers_use_signed_tool_routes(monkeypatch, desktop_env) 
     monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
 
     assert forger_desktop.list_official_tools()["tools"][0]["id"] == "forger_chrome_extension"
-    assert forger_desktop.get_official_tool("forger_chrome_extension")["id"] == "forger_chrome_extension"
+    assert (
+        forger_desktop.get_official_tool("forger_chrome_extension")["id"]
+        == "forger_chrome_extension"
+    )
     assert forger_desktop.call_official_tool(
         "forger_chrome_extension",
         "forger_chrome_extension.get_styles",
@@ -379,6 +382,7 @@ def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, deskt
         "get_current_url",
         "navigate",
         "get_html",
+        "wait_for_selector",
         "click",
         "focus",
         "hover",
@@ -387,6 +391,7 @@ def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, deskt
         "get_styles",
         "set_styles",
         "set_styles",
+        "close_window",
         "close_session",
     ]
     for action in action_ids:
@@ -402,6 +407,12 @@ def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, deskt
     assert forger_desktop.chrome_get_current_url("session_1")["success"] is True
     assert forger_desktop.chrome_navigate("session_1", "https://example.com")["success"] is True
     assert forger_desktop.chrome_get_html("session_1")["success"] is True
+    assert (
+        forger_desktop.chrome_wait_for_selector("session_1", "#ready", timeout_ms=60000)[
+            "success"
+        ]
+        is True
+    )
     assert forger_desktop.chrome_click("session_1", "#save")["success"] is True
     assert forger_desktop.chrome_focus("session_1", "#name")["success"] is True
     assert forger_desktop.chrome_hover("session_1", "#menu")["success"] is True
@@ -422,6 +433,7 @@ def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, deskt
         {"outline": "2px solid #dd782b"},
     )["success"] is True
     assert forger_desktop.chrome_highlight_element("session_1", "#total")["success"] is True
+    assert forger_desktop.chrome_close_window("session_1")["success"] is True
     assert forger_desktop.chrome_close_session("session_1")["success"] is True
 
     assert json.loads(fake.requests[0].body) == {"input": {}}
@@ -431,51 +443,62 @@ def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, deskt
         "input": {"sessionId": "session_1", "url": "https://example.com"},
     }
     assert json.loads(fake.requests[4].body) == {"input": {"sessionId": "session_1"}}
-    assert json.loads(fake.requests[8].body) == {
+    assert json.loads(fake.requests[5].body) == {
+        "input": {
+            "sessionId": "session_1",
+            "selector": "#ready",
+            "state": "visible",
+            "timeoutMs": 60000,
+        },
+    }
+    assert fake.requests[5].timeout == 70
+    assert fake.requests[4].timeout == 30
+    assert json.loads(fake.requests[9].body) == {
         "input": {"sessionId": "session_1", "selector": "#name", "text": "Forger"},
     }
-    assert json.loads(fake.requests[9].body) == {
+    assert json.loads(fake.requests[10].body) == {
         "input": {
             "sessionId": "session_1",
             "selector": "form",
             "submitSelector": "button.primary",
         },
     }
-    assert json.loads(fake.requests[10].body) == {
+    assert json.loads(fake.requests[11].body) == {
         "input": {
             "sessionId": "session_1",
             "selector": "#total",
             "properties": ["outline", "box-shadow"],
         },
     }
-    assert json.loads(fake.requests[11].body) == {
+    assert json.loads(fake.requests[12].body) == {
         "input": {
             "sessionId": "session_1",
             "selector": "#total",
             "styles": {"outline": "2px solid #dd782b"},
         },
     }
-    assert json.loads(fake.requests[12].body)["input"]["styles"] == {
+    assert json.loads(fake.requests[13].body)["input"]["styles"] == {
         "outline": "2px solid #dd782b",
         "outline-offset": "3px",
         "box-shadow": "0 0 0 4px rgba(221, 120, 43, 0.24)",
     }
-    assert json.loads(fake.requests[13].body) == {"input": {"sessionId": "session_1"}}
+    assert json.loads(fake.requests[14].body) == {"input": {"sessionId": "session_1"}}
+    assert json.loads(fake.requests[15].body) == {"input": {"sessionId": "session_1"}}
 
     assert forger_desktop.chrome_open_dedicated_tab("https://example.com")["success"] is True
     assert forger_desktop.chrome_get_html("session_1", selector="#main")["success"] is True
     assert forger_desktop.chrome_submit_form("session_1", "form")["success"] is True
     assert forger_desktop.chrome_get_styles("session_1", "#total")["success"] is True
-    assert json.loads(fake.requests[14].body) == {
+    assert json.loads(fake.requests[16].body) == {
         "input": {"url": "https://example.com"},
     }
-    assert json.loads(fake.requests[15].body) == {
+    assert json.loads(fake.requests[17].body) == {
         "input": {"sessionId": "session_1", "selector": "#main"},
     }
-    assert json.loads(fake.requests[16].body) == {
+    assert json.loads(fake.requests[18].body) == {
         "input": {"sessionId": "session_1", "selector": "form"},
     }
-    assert json.loads(fake.requests[17].body) == {
+    assert json.loads(fake.requests[19].body) == {
         "input": {"sessionId": "session_1", "selector": "#total"},
     }
     for record in fake.requests:

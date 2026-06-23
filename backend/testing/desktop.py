@@ -17,6 +17,7 @@ class RecordedDesktopRequest:
     path: str
     body: bytes
     headers: dict[str, str]
+    timeout: float | int
 
 
 class FakeDesktopResponse:
@@ -45,7 +46,6 @@ class FakeDesktopRuntime:
         self.responses[(method.upper(), path)] = FakeDesktopResponse(raw=b"")
 
     def urlopen(self, request, timeout: int = 30) -> FakeDesktopResponse:
-        del timeout
         parsed = urlparse(request.full_url)
         method = request.get_method().upper()
         path = parsed.path
@@ -54,6 +54,7 @@ class FakeDesktopRuntime:
             path=path,
             body=request.data or b"",
             headers={key.lower(): value for key, value in request.header_items()},
+            timeout=timeout,
         )
         self.requests.append(record)
         return self.responses[(method, path)]
@@ -97,4 +98,3 @@ def signed_desktop_event(
     }
     event["signature"] = event_signature(event, config.secret)
     return event
-

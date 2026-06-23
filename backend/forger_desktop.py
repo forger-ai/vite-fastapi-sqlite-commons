@@ -142,11 +142,13 @@ def call_official_tool(
     tool_id: str,
     action_id: str,
     input: dict[str, Any] | None = None,
+    timeout_seconds: float | int | None = None,
 ) -> dict[str, Any]:
     return _request(
         "POST",
         f"/tools/{quote(tool_id, safe='')}/actions/{quote(action_id, safe='')}",
         {"input": input or {}},
+        timeout_seconds=timeout_seconds,
     )
 
 
@@ -199,6 +201,26 @@ def chrome_get_html(session_id: str, selector: str | None = None) -> dict[str, A
         CHROME_EXTENSION_TOOL_ID,
         _chrome_action("get_html"),
         input,
+    )
+
+
+def chrome_wait_for_selector(
+    session_id: str,
+    selector: str,
+    state: str = "visible",
+    timeout_ms: int = 10000,
+) -> dict[str, Any]:
+    normalized_timeout_ms = max(1, min(60000, int(timeout_ms)))
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("wait_for_selector"),
+        {
+            "sessionId": session_id,
+            "selector": selector,
+            "state": state,
+            "timeoutMs": normalized_timeout_ms,
+        },
+        timeout_seconds=min(70, (normalized_timeout_ms / 1000) + 10),
     )
 
 
@@ -297,6 +319,14 @@ def chrome_highlight_element(
         "box-shadow": "0 0 0 4px rgba(221, 120, 43, 0.24)",
     }
     return chrome_set_styles(session_id, selector, highlight_styles)
+
+
+def chrome_close_window(session_id: str) -> dict[str, Any]:
+    return call_official_tool(
+        CHROME_EXTENSION_TOOL_ID,
+        _chrome_action("close_window"),
+        {"sessionId": session_id},
+    )
 
 
 def chrome_close_session(session_id: str) -> dict[str, Any]:
@@ -630,7 +660,13 @@ def wait_for_run(
     raise ForgerDesktopRuntimeError(f"agent run timed out: {last or desktop_run_id}")
 
 
-def _request(method: str, app_path: str, body: dict[str, Any] | None) -> Any:
+def _request(
+    method: str,
+    app_path: str,
+    body: dict[str, Any] | None,
+    *,
+    timeout_seconds: float | int | None = None,
+) -> Any:
     config = _config()
     path = f"/v1/apps/{config.app_id}{app_path}"
     body_bytes = (
@@ -661,7 +697,7 @@ def _request(method: str, app_path: str, body: dict[str, Any] | None) -> Any:
         },
     )
     try:
-        with urlopen(request, timeout=30) as response:
+        with urlopen(request, timeout=timeout_seconds or 30) as response:
             raw = response.read().decode("utf-8")
             return json.loads(raw) if raw else None
     except HTTPError as error:
