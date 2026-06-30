@@ -140,6 +140,8 @@ Apps must not construct backend WebSocket URLs by replacing `URL.pathname` on `A
 - a reusable provider for stack apps;
 - shared query key helpers for app-local wrappers.
 
+Commons declares TanStack Router as a stack frontend dependency, but routes stay app-local. Apps define their own route trees and visible navigation inside their frontend source.
+
 `frontend/realtime.ts` defines:
 
 - a shared client for `/api/realtime/ws`;
