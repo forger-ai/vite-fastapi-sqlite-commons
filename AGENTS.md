@@ -96,7 +96,7 @@ Apps must import their models before calling `init_db()`. The stack convention u
 - helpers for requesting, listing, and revoking Desktop folder grants;
 - helpers for starting manifest agent threads, resuming manifest agent threads, steering active runs, inspecting threads/runs, canceling runs, and waiting for terminal run status;
 - helpers for checking assistant task status, starting manifest prompt-template tasks, inspecting tasks, canceling tasks, and waiting for terminal task status;
-- helpers for listing app-granted official tools, calling granted official tool actions, and using the Forger Chrome Extension through the signed Desktop runtime bridge;
+- helpers for listing app-granted Forger Tools, calling granted Forger Tool actions, using the Forger Chrome Extension, and listing/status/calling app-granted Connections through the signed Desktop runtime bridge;
 - helpers for listing audio devices, creating and closing live transcription sessions, transcribing saved audio files, synthesizing speech bytes, starting ephemeral playback, checking playback status, and canceling playback;
 - the `FORGER_DESKTOP_RUNTIME_URL`, `FORGER_DESKTOP_RUNTIME_APP_ID`, `FORGER_DESKTOP_RUNTIME_SECRET`, and `FORGER_APP_GRANT_SECRET` environment contract.
 

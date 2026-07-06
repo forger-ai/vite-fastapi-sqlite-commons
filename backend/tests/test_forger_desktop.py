@@ -373,6 +373,71 @@ def test_official_tool_helpers_use_signed_tool_routes(monkeypatch, desktop_env) 
         )
 
 
+def test_connection_helpers_serialize_action_inputs(monkeypatch, desktop_env) -> None:
+    fake = FakeDesktopRuntime()
+    base = f"/v1/apps/{desktop_env['app_id']}"
+    fake.add_json("GET", f"{base}/connections", {"types": [{"type": "gmail"}]})
+    fake.add_json(
+        "GET",
+        f"{base}/connections/gmail/status",
+        {"connected": True, "status": "connected"},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/connections/gmail/actions/gmail.search_messages",
+        {"success": True, "data": {"messages": []}},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/connections/slack/actions/slack.send_message",
+        {"success": True, "data": {"sent": True}},
+    )
+    monkeypatch.setattr(forger_desktop, "urlopen", fake.urlopen)
+
+    assert forger_desktop.list_connections()["types"][0]["type"] == "gmail"
+    assert forger_desktop.connection_status("gmail")["connected"] is True
+    assert forger_desktop.get_connection_status("gmail")["connected"] is True
+    assert forger_desktop.call_connection_action(
+        "gmail",
+        "gmail.search_messages",
+        {"query": "from:example@example.com"},
+        connection_id="gmail-default",
+    )["success"] is True
+    assert forger_desktop.call_connection_action(
+        "slack",
+        "slack.send_message",
+        {"channel": "C123", "text": "Hello"},
+    )["success"] is True
+
+    assert fake.requests[0].method == "GET"
+    assert fake.requests[0].path == f"{base}/connections"
+    assert fake.requests[1].path == f"{base}/connections/gmail/status"
+    assert fake.requests[2].path == f"{base}/connections/gmail/status"
+    assert fake.requests[3].method == "POST"
+    assert fake.requests[3].path == (
+        f"{base}/connections/gmail/actions/"
+        "gmail.search_messages"
+    )
+    assert json.loads(fake.requests[3].body) == {
+        "input": {"query": "from:example@example.com"},
+        "connectionId": "gmail-default",
+    }
+    assert fake.requests[4].method == "POST"
+    assert fake.requests[4].path == (
+        f"{base}/connections/slack/actions/"
+        "slack.send_message"
+    )
+    assert json.loads(fake.requests[4].body) == {
+        "input": {"channel": "C123", "text": "Hello"},
+    }
+    for record in fake.requests:
+        assert_signed_desktop_request(
+            record,
+            app_id=desktop_env["app_id"],
+            secret=desktop_env["secret"],
+        )
+
+
 def test_chrome_official_tool_helpers_serialize_action_inputs(monkeypatch, desktop_env) -> None:
     fake = FakeDesktopRuntime()
     base = f"/v1/apps/{desktop_env['app_id']}"
