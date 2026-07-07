@@ -3,6 +3,8 @@ name = "forger-vite-fastapi-sqlite-commons"
 version = "0.1.0"
 description = "Shared backend and frontend commons for Forger vite-fastapi-sqlite apps."
 requires-python = ">=3.11"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 dependencies = [
   "fastapi>=0.115.0",
   "sqlmodel>=0.0.22",
