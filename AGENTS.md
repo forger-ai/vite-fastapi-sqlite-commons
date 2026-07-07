@@ -184,7 +184,7 @@ Do not edit commons when the change belongs to a concrete app.
 Examples that must stay in an app:
 
 - importing financial movements;
-- managing Finance OS categories;
+- managing categories for a concrete app;
 - adding domain endpoints;
 - changing a product visual theme;
 - creating a data-loading skill;
@@ -198,7 +198,7 @@ If a need first appears in one app, implement it in that app. Move it to commons
 
 `skeletons/vite-fastapi-sqlite` uses this repo as the stack shared base.
 
-Stack apps, such as `apps/finance-os`, use commons for shared infrastructure and keep their own logic inside the app repo.
+Stack apps use commons for shared infrastructure and keep their own logic inside each app repo.
 
 If commons changes, apps that consume this repo must update their submodule reference or corresponding copy. That change is versioned inside each affected app repo.
 
@@ -214,12 +214,8 @@ If commons changes, apps that consume this repo must update their submodule refe
 
 ## Verification
 
-After changing commons, verify at least one consuming app in the stack.
+After changing commons, verify at least one consuming app or the stack skeleton.
 
-For `finance-os`, relevant verifications are:
-
-- backend: `scripts/verify.py`;
-- frontend: `npm run verify`;
-- local execution via Docker Compose when the change affects Dockerfiles, mounts, or services.
+Relevant verifications include backend checks, frontend checks, and local execution through Docker Compose when the change affects Dockerfiles, mounts, or services.
 
 Commands are internal agent tools. They must not be presented to the final user as normal usage steps.

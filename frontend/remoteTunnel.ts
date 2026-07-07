@@ -293,7 +293,7 @@ function showRemoteOverlay(error: unknown): void {
   const body = sessionEnded
     ? "Este túnel ya fue cerrado o expiró."
     : remoteError?.status === 401
-      ? "Finance OS necesita confirmar tu sesión de Forger Cloud antes de conectarse con Desktop."
+      ? "Esta app necesita confirmar tu sesión de Forger Cloud antes de conectarse con Desktop."
       : "No se pudo completar el handshake seguro con Forger Cloud.";
   renderRemoteOverlay({
     title,
