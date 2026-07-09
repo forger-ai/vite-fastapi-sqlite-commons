@@ -168,6 +168,46 @@ def connection_status(connection_type: str) -> dict[str, Any]:
     return get_connection_status(connection_type)
 
 
+def configure_connection(
+    connection_type: str,
+    *,
+    label: str | None = None,
+    connection_id: str | None = None,
+    timeout_seconds: float | int | None = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {}
+    if label:
+        body["label"] = label
+    if connection_id:
+        body["connectionId"] = connection_id
+    return _request(
+        "POST",
+        f"/connections/{quote(connection_type, safe='')}/setup",
+        body,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def request_connection_grant(
+    connection_type: str,
+    *,
+    reason: str | None = None,
+    connection_ids: list[str] | None = None,
+    timeout_seconds: float | int | None = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {}
+    if reason:
+        body["reason"] = reason
+    if connection_ids:
+        body["connectionIds"] = connection_ids
+    return _request(
+        "POST",
+        f"/connections/{quote(connection_type, safe='')}/grants/request",
+        body,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 def call_connection_action(
     connection_type: str,
     action_id: str,

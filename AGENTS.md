@@ -56,6 +56,7 @@ backend/
 frontend/
   Dockerfile        Frontend base image with Node/Vite
   client.ts         Typed HTTP client and error handling
+  dateTimeSelectors.tsx Generic React date, date range, time, and time range selector primitives
   query.ts          TanStack Query provider, client defaults, and query key helpers
   realtime.ts       Realtime client for local WebSocket and encrypted remote tunnel sessions
 
@@ -141,6 +142,14 @@ Apps must not construct backend WebSocket URLs by replacing `URL.pathname` on `A
 - shared query key helpers for app-local wrappers.
 
 Commons declares TanStack Router as a stack frontend dependency, but routes stay app-local. Apps define their own route trees and visible navigation inside their frontend source.
+
+`frontend/dateTimeSelectors.tsx` defines:
+
+- generic React primitives for selecting one date, a date range, one time, or a time range;
+- pure helpers for ISO date/time validation, calendar-month generation, range selection, and locale-aware labels;
+- Tailwind token-based class names that apps can compose or override.
+
+Apps can use these controls for common form input. App-specific business rules, presets, copy, and layout stay in the app.
 
 `frontend/realtime.ts` defines:
 

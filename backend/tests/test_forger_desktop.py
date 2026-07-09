@@ -384,6 +384,26 @@ def test_connection_helpers_serialize_action_inputs(monkeypatch, desktop_env) ->
     )
     fake.add_json(
         "POST",
+        f"{base}/connections/gmail/setup",
+        {"success": True, "instance": {"id": "gmail-default"}},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/connections/gmail/grants/request",
+        {"success": True, "requirement": {"granted": True}},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/connections/gmail/setup",
+        {"success": True, "instance": {"id": "gmail-default"}},
+    )
+    fake.add_json(
+        "POST",
+        f"{base}/connections/gmail/grants/request",
+        {"success": True, "requirement": {"granted": True}},
+    )
+    fake.add_json(
+        "POST",
         f"{base}/connections/gmail/actions/gmail.search_messages",
         {"success": True, "data": {"messages": []}},
     )
@@ -397,6 +417,18 @@ def test_connection_helpers_serialize_action_inputs(monkeypatch, desktop_env) ->
     assert forger_desktop.list_connections()["types"][0]["type"] == "gmail"
     assert forger_desktop.connection_status("gmail")["connected"] is True
     assert forger_desktop.get_connection_status("gmail")["connected"] is True
+    assert forger_desktop.configure_connection(
+        "gmail",
+        label="Personal Gmail",
+        connection_id="gmail-default",
+    )["success"] is True
+    assert forger_desktop.request_connection_grant(
+        "gmail",
+        reason="Use Gmail from the app",
+        connection_ids=["gmail-default"],
+    )["success"] is True
+    assert forger_desktop.configure_connection("gmail")["success"] is True
+    assert forger_desktop.request_connection_grant("gmail")["success"] is True
     assert forger_desktop.call_connection_action(
         "gmail",
         "gmail.search_messages",
@@ -414,20 +446,38 @@ def test_connection_helpers_serialize_action_inputs(monkeypatch, desktop_env) ->
     assert fake.requests[1].path == f"{base}/connections/gmail/status"
     assert fake.requests[2].path == f"{base}/connections/gmail/status"
     assert fake.requests[3].method == "POST"
-    assert fake.requests[3].path == (
-        f"{base}/connections/gmail/actions/"
-        "gmail.search_messages"
-    )
+    assert fake.requests[3].path == f"{base}/connections/gmail/setup"
     assert json.loads(fake.requests[3].body) == {
-        "input": {"query": "from:example@example.com"},
+        "label": "Personal Gmail",
         "connectionId": "gmail-default",
     }
     assert fake.requests[4].method == "POST"
-    assert fake.requests[4].path == (
+    assert fake.requests[4].path == f"{base}/connections/gmail/grants/request"
+    assert json.loads(fake.requests[4].body) == {
+        "reason": "Use Gmail from the app",
+        "connectionIds": ["gmail-default"],
+    }
+    assert fake.requests[5].method == "POST"
+    assert fake.requests[5].path == f"{base}/connections/gmail/setup"
+    assert json.loads(fake.requests[5].body) == {}
+    assert fake.requests[6].method == "POST"
+    assert fake.requests[6].path == f"{base}/connections/gmail/grants/request"
+    assert json.loads(fake.requests[6].body) == {}
+    assert fake.requests[7].method == "POST"
+    assert fake.requests[7].path == (
+        f"{base}/connections/gmail/actions/"
+        "gmail.search_messages"
+    )
+    assert json.loads(fake.requests[7].body) == {
+        "input": {"query": "from:example@example.com"},
+        "connectionId": "gmail-default",
+    }
+    assert fake.requests[8].method == "POST"
+    assert fake.requests[8].path == (
         f"{base}/connections/slack/actions/"
         "slack.send_message"
     )
-    assert json.loads(fake.requests[4].body) == {
+    assert json.loads(fake.requests[8].body) == {
         "input": {"channel": "C123", "text": "Hello"},
     }
     for record in fake.requests:

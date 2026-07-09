@@ -19,6 +19,7 @@ backend/
 frontend/
   Dockerfile        — Node/Vite image
   client.ts         — Typed HTTP client and backend WebSocket URL helper
+  dateTimeSelectors.tsx — Generic React selectors for dates, date ranges, times, and time ranges
   query.ts          — TanStack Query defaults and provider
   realtime.ts       — Local and encrypted remote realtime client
 docker-compose.base.yml  — Base service definitions (extends)
@@ -26,6 +27,10 @@ docker-compose.base.yml  — Base service definitions (extends)
 
 Use `apiWebSocketUrl()` for app-backend WebSockets. It preserves runtime path
 prefixes such as `/__forger_api` that Forger Desktop injects for installed apps.
+
+Use `frontend/dateTimeSelectors.tsx` for generic date, range, and time form
+controls. The module keeps business rules out of commons: apps pass their own
+labels, limits, disabled dates, default ranges, and screen layout.
 
 Connection-aware app backends use `list_connections()`,
 `connection_status("gmail")`, and `call_connection_action(...)` from

@@ -11,7 +11,8 @@
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true,
-    "types": ["vite/client", "vitest"]
+    "types": ["vite/client", "vitest"],
+    "jsx": "react-jsx"
   },
-  "include": ["client.ts", "query.ts", "realtime.ts", "remoteTunnel.ts", "testing/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
+  "include": ["client.ts", "dateTimeSelectors.tsx", "index.ts", "query.ts", "realtime.ts", "remoteTunnel.ts", "testing/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
 }
